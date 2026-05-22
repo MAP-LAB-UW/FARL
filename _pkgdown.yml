@@ -1,0 +1,29 @@
+url: https://yijunchenguw.github.io/FARL/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  math-rendering: katex
+#  includes:
+#    in_header: pkgdown/favicon.html
+navbar:
+  structure:
+    left: [intro, tutorials, reference]
+    right: [search, github]
+  components:
+    intro:
+      text: Overview
+      href: reference/FARL-package.html
+    tutorials:
+      text: Tutorial
+      href: articles/FARL.html
+    reference:
+      text: Glossary
+      href: reference/index.html
+
+footer:
+  structure:
+    left: developed_by
+    right: acknowledgement
+  components:
+    acknowledgement: "Acknowledgement: This project is supported by IES 305D200015 and 305D240021."
