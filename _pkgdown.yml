@@ -1,11 +1,21 @@
 url: https://yijunchenguw.github.io/FARL/
 
+home:
+  title: "FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment"
+  description: >
+    FARL implements factor-augmented regularized latent regression for
+    large-scale assessments with high-dimensional, strongly dependent
+    background variables. It combines common latent factors with sparsely
+    selected idiosyncratic components and supports plausible-value generation
+    for group-level inference.
+
 template:
   bootstrap: 5
   bootswatch: flatly
   math-rendering: katex
 #  includes:
 #    in_header: pkgdown/favicon.html
+
 navbar:
   structure:
     left: [intro, tutorials, reference]
@@ -20,6 +30,21 @@ navbar:
     reference:
       text: Glossary
       href: reference/index.html
+
+reference:
+  - title: Model estimation
+    contents:
+      - Farlr_mml
+      - Dire_mml
+  - title: Plausible values
+    contents:
+      - Farlr_drawPVs
+      - Dire_drawPVs
+
+  - title: Simulated datasets
+    contents:
+      - sim_a1
+      - sim_a2
 
 footer:
   structure:

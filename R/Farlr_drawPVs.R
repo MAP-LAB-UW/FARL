@@ -66,112 +66,483 @@ variance.sample <- function(theta_matrix, step = 10){
 #' measurement uncertainty in secondary analyses.
 #'
 #' @export
-Farlr_drawPVs <- function (mmlcomp, npv = 10L,verbose = TRUE) {
-  # Define quadrature points (30 points from -4 to 4)
-  # Compute EAP estimates for each examinee
-  n = nrow(mmlcomp$X)
+Farlr_drawPVs <- function(
+    mmlcomp,
+    npv = 10L,
+    theta = NULL,
+    n_quad = 30L,
+    theta_range = base::c(-4, 4),
+    adaptive_range = FALSE,
+    range_sd = 4,
+    draw_method = base::c("normal", "grid"),
+    design_matrix = NULL,
+    seed = NULL,
+    verbose = TRUE,
+    progress = TRUE,
+    return_details = TRUE
+) {
+  draw_method <- match.arg(draw_method)
 
-  resp <- reshape(
-    mmlcomp$stuItems,
-    idvar = "subject",
-    timevar = "key",
-    direction = "wide"
-  )
-  rownames(resp) <- mmlcomp$stuDat[,1]
-  resp <- as.matrix(resp[,-1])
-  beta_hat <- mmlcomp$coefficients
-  studentData <- mmlcomp$stuDat[,-1]
-  sigma <- mmlcomp$sigma
-  a <- mmlcomp$item_params$slope
-  d <- - mmlcomp$item_params$slope*mmlcomp$item_params$difficulty
-  c <- mmlcomp$item_params$guessing
-  EAP_estimates <- numeric(n)
-  EAP_variance <- numeric(n)
-  Q <- 30
-  t_q <- seq(-4, 4, length.out = Q)  # Quadrature grid
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
-  # Function to compute likelihood for an examinee
-  compute_likelihood <- function(response_vector, a, b, t_q) {
-    likelihood <- sapply(t_q, function(t) {
-      P <- c + (1-c)*(1 / (1 + exp(-a * (t - b))))  # Compute P(X_ij | theta)
-      prod((P^response_vector) * ((1 - P)^(1 - response_vector)))  # Compute likelihood
-    })
-    return(likelihood)
+  npv <- as.integer(npv)
+  n_quad <- as.integer(n_quad)
+  if (length(npv) != 1L || is.na(npv) || npv < 1L) {
+    stop("npv must be a positive integer.", call. = FALSE)
   }
-  #theta_pre <- (F %*% (beta) + (E) %*% veta) /norm_c
-  output <- if (verbose) stderr() else nullfile()
-  cat(file = output, '\n Generating plausible values under FARL framework...\n')
-  if (verbose) pb <- txtProgressBar(file = output, 0, length(c(1:n)), style = 3)
-  for (i in 1:n) {
-    ################
-    if (verbose) setTxtProgressBar(pb, pb$getVal() + 1)
-    prior_f2 <- dnorm(t_q, mean = studentData[i,]%*%beta_hat, sd = sigma)
-    likelihood2 <- compute_likelihood(resp[i, ], a, -(d/a), t_q)  # Compute likelihood at each t_q
-    # Compute EAP as weighted mean of t_q
-    EAP_estimates[i]  <- sum(t_q * likelihood2 * prior_f2)/sum( likelihood2*prior_f2 )
-    EAP_variance[i]  <- sum((t_q-EAP_estimates[i])^2 * likelihood2*prior_f2 )/sum( likelihood2 *prior_f2)
-    ################
+  if (length(n_quad) != 1L || is.na(n_quad) || n_quad < 3L) {
+    stop("n_quad must be an integer of at least 3.", call. = FALSE)
   }
-  eap_mean2 <- mean(EAP_estimates)
-  theta_pv <- vector(mode = "numeric",length = n*npv)
-  data <- c()
-  for (i in seq_len(n)) {
-    farl_vals <- numeric(npv)
-    for (j in seq_len(npv)) {
-      farl_vals[j] <- rnorm(
-        1,
-        mean = EAP_estimates[i],
-        sd   = sqrt(EAP_variance[i])
+  if (length(theta_range) != 2L ||
+      any(!is.finite(theta_range)) || theta_range[1L] >= theta_range[2L]) {
+    stop("theta_range must contain two increasing finite values.", call. = FALSE)
+  }
+  if (length(range_sd) != 1L || !is.finite(range_sd) || range_sd <= 0) {
+    stop("range_sd must be a positive finite number.", call. = FALSE)
+  }
+
+  get_component <- function(primary, fallback = NULL, required = FALSE) {
+    value <- mmlcomp[[primary]]
+    if (is.null(value) && !is.null(fallback)) {
+      value <- mmlcomp[[fallback]]
+    }
+    if (is.null(value) && required) {
+      stop(
+        "mmlcomp does not contain '", primary, "'",
+        if (!is.null(fallback)) paste0(" or '", fallback, "'") else "",
+        ".",
+        call. = FALSE
       )
     }
-    data <- rbind(
-      data,
-      c(subject = i, farl_vals)
+    value
+  }
+
+  beta_hat <- get_component("coefficients", "coef", required = TRUE)
+  beta_hat <- as.numeric(beta_hat)
+  sigma <- as.numeric(get_component("sigma", required = TRUE))
+  if (length(sigma) != 1L || !is.finite(sigma) || sigma <= 0) {
+    stop("mmlcomp$sigma must be one positive finite number.", call. = FALSE)
+  }
+
+  factor_scores <- get_component(
+    "factor_scores",
+    "fit_score",
+    required = TRUE
+  )
+  factor_scores <- as.matrix(factor_scores)
+  N <- nrow(factor_scores)
+
+  # ---------------------------------------------------------------------------
+  # Recover the response matrix, preferably from the new mmlcomp$response field.
+  # ---------------------------------------------------------------------------
+  response <- mmlcomp$response
+
+  if (is.null(response)) {
+    stu_items <- get_component("stuItems", required = TRUE)
+    stu_data <- get_component("stuDat", required = TRUE)
+
+    required_columns <- base::c("subject", "key", "score")
+    if (!all(required_columns %in% names(stu_items))) {
+      stop(
+        "mmlcomp$stuItems must contain subject, key, and score columns.",
+        call. = FALSE
+      )
+    }
+
+    subject_ids <- as.character(stu_data[[1L]])
+    item_ids <- if (is.factor(stu_items$key)) {
+      levels(stu_items$key)
+    } else {
+      unique(as.character(stu_items$key))
+    }
+
+    response <- matrix(
+      NA_real_,
+      nrow = length(subject_ids),
+      ncol = length(item_ids),
+      dimnames = list(subject_ids, item_ids)
+    )
+
+    row_index <- match(as.character(stu_items$subject), subject_ids)
+    col_index <- match(as.character(stu_items$key), item_ids)
+    if (anyNA(row_index) || anyNA(col_index)) {
+      stop("Could not align stuItems with stuDat.", call. = FALSE)
+    }
+    if (anyDuplicated(paste(row_index, col_index, sep = ":"))) {
+      stop("stuItems contains duplicated subject-item records.", call. = FALSE)
+    }
+
+    response[cbind(row_index, col_index)] <- as.numeric(stu_items$score)
+  }
+
+  response <- as.matrix(response)
+  suppressWarnings(storage.mode(response) <- "numeric")
+  if (nrow(response) != N) {
+    stop(
+      "The response matrix and factor_scores have different row counts.",
+      call. = FALSE
     )
   }
-  colnames(data) <- c("id", paste0("_farl", seq_len(npv)))
-  datPVs <- as.data.frame(data)
-  return(datPVs)
-  # n <- length(main)
-  # # First create all possible combinations of 5 binary variables (2^5 = 32 groups)
-  # combinations <- expand.grid(replicate(n, 0:1, simplify = FALSE))
-  # colnames(combinations) <- main[1:n]  # Assuming 'main' contains names of your 5 binary variables
-  #
-  # # Create a list to store results for all subgroups
-  # subgroup_results <- list()
-  # # Loop through all possible combinations
-  # for (i in 1:nrow(combinations)) {
-  #
-  #   condition_str <- paste(
-  #     sapply(1:n, function(j) {
-  #       paste0("X_discrete[,", j, "] == ", combinations[i, j])
-  #     }),
-  #     collapse = " & "
-  #   )
-  #   # Evaluate the string expression to get a logical vector
-  #   condition <- eval(parse(text = condition_str))
-  #
-  #   # Get IDs for this subgroup
-  #   subgroup_ids <- mmlcomp$stuDat[condition,1]
-  #
-  #   # Store results (excluding ID column)
-  #   subgroup_results[[i]] <- datPVs[as.numeric(datPVs$subject) %in% subgroup_ids, -1]
-  #
-  #   # Optional: name each subgroup (e.g., "00000", "00001", etc.)
-  #   names(subgroup_results)[i] <- paste0("result_", paste(combinations[i, ], collapse = ""))
-  # }
-  #
-  # # Now you can access results for any subgroup, e.g.:
-  # # result_10101 <- subgroup_results[["result_10101"]]
-  # result <-  (datPVs[,-1]) #%>% select(paste0("_dire", c(1:10)))
-  #
-  # mean_vector <- c()
-  # mean_v_vector <- c()
-  # var_vector <- c()
-  # for (result in subgroup_results) {
-  #   mean_vector <- c(mean_vector, mean(colMeans(result)))
-  #   var_vector <- c(var_vector, variance.sample(result, step = 10))
-  #   mean_v_vector <- c(mean_v_vector, variance.cal(result, step = 10))
-  # }
-  # return(list(mean = mean_vector, var = var_vector, mean_v = mean_v_vector ))
+  J <- ncol(response)
+
+  # ---------------------------------------------------------------------------
+  # Construct the latent-regression design used by the fitted method.
+  # ---------------------------------------------------------------------------
+  if (is.null(design_matrix)) {
+    method <- as.character(mmlcomp$method)
+
+    if (length(method) == 1L && identical(method, "FARLR_Debias")) {
+      Fan <- mmlcomp$Fan
+      if (is.matrix(Fan) && nrow(Fan) == N) {
+        design_matrix <- Fan
+      } else {
+        hatU <- get_component("hatU", required = TRUE)
+        design_matrix <- cbind(factor_scores, as.matrix(hatU))
+      }
+    } else {
+      X_scaled <- get_component("X", required = TRUE)
+      design_matrix <- cbind(factor_scores, as.matrix(X_scaled))
+    }
+  }
+
+  design_matrix <- as.matrix(design_matrix)
+  if (nrow(design_matrix) != N || ncol(design_matrix) != length(beta_hat)) {
+    stop(
+      "The design matrix has ", ncol(design_matrix),
+      " columns, but the fitted model has ", length(beta_hat),
+      " coefficients.",
+      call. = FALSE
+    )
+  }
+  if (!is.numeric(design_matrix) || any(!is.finite(design_matrix))) {
+    stop("The latent-regression design matrix must be finite and numeric.", call. = FALSE)
+  }
+
+  prior_mean <- drop(design_matrix %*% beta_hat)
+
+  # ---------------------------------------------------------------------------
+  # Extract item parameters flexibly from the new mmlcomp object.
+  # ---------------------------------------------------------------------------
+  item_params <- get_component("item_params", required = TRUE)
+  if (!(is.data.frame(item_params) || is.list(item_params))) {
+    stop("mmlcomp$item_params must be a data frame or list.", call. = FALSE)
+  }
+
+  get_item_parameter <- function(candidates, default = NULL, required = FALSE) {
+    for (candidate in candidates) {
+      if (candidate %in% names(item_params)) {
+        return(item_params[[candidate]])
+      }
+    }
+    if (required) {
+      stop(
+        "item_params must contain one of: ",
+        paste(candidates, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    default
+  }
+
+  a <- as.numeric(get_item_parameter(base::c("a", "slope"), required = TRUE))
+  guessing <- as.numeric(
+    get_item_parameter(base::c("c", "guessing"), default = rep(0, J))
+  )
+  guessing <- rep_len(guessing, J)
+
+  d <- get_item_parameter("d", default = NULL)
+  if (is.null(d)) {
+    difficulty <- get_item_parameter(
+      base::c("b", "difficulty"),
+      default = NULL
+    )
+    if (is.null(difficulty)) {
+      d <- rep(NA_real_, J)
+    } else {
+      d <- -a * as.numeric(difficulty)
+    }
+  }
+  d <- as.numeric(d)
+
+  b1 <- as.numeric(get_item_parameter("b1", default = rep(NA_real_, J)))
+  b2 <- as.numeric(get_item_parameter("b2", default = rep(NA_real_, J)))
+  b1 <- rep_len(b1, J)
+  b2 <- rep_len(b2, J)
+
+  type <- tolower(as.character(get_component("item_type", required = TRUE)))
+  if (length(type) != J || length(a) != J || length(d) != J) {
+    stop("Item types and item parameters must match ncol(response).", call. = FALSE)
+  }
+
+  idx_gpcm <- type == "gpcm"
+  idx_binary <- !idx_gpcm
+
+  if (any(idx_binary) &&
+      (any(!is.finite(a[idx_binary])) ||
+       any(!is.finite(d[idx_binary])) ||
+       any(!is.finite(guessing[idx_binary])))) {
+    stop("Binary items require finite a, d, and c parameters.", call. = FALSE)
+  }
+  if (any(idx_binary) &&
+      any(guessing[idx_binary] < 0 | guessing[idx_binary] >= 1)) {
+    stop("Binary-item c must satisfy 0 <= c < 1.", call. = FALSE)
+  }
+  if (any(idx_gpcm) &&
+      (any(!is.finite(a[idx_gpcm])) ||
+       any(!is.finite(b1[idx_gpcm])) ||
+       any(!is.finite(b2[idx_gpcm])))) {
+    stop("GPCM items require finite a, b1, and b2 parameters.", call. = FALSE)
+  }
+
+  if (any(idx_binary)) {
+    binary_values <- response[, idx_binary, drop = FALSE]
+    binary_values <- binary_values[!is.na(binary_values)]
+    if (any(!binary_values %in% base::c(0, 1))) {
+      stop("Binary responses must be 0, 1, or NA.", call. = FALSE)
+    }
+  }
+  if (any(idx_gpcm)) {
+    gpcm_values <- response[, idx_gpcm, drop = FALSE]
+    gpcm_values <- gpcm_values[!is.na(gpcm_values)]
+    if (any(!gpcm_values %in% 0:2)) {
+      stop("GPCM responses must be 0, 1, 2, or NA.", call. = FALSE)
+    }
+  }
+
+  # ---------------------------------------------------------------------------
+  # Log likelihood for one person's response vector on a theta grid.
+  # ---------------------------------------------------------------------------
+  log_item_likelihood <- function(response_vector, theta_grid) {
+    log_likelihood <- numeric(length(theta_grid))
+
+    if (any(idx_binary)) {
+      y <- response_vector[idx_binary]
+      observed <- !is.na(y)
+
+      if (any(observed)) {
+        a_obs <- a[idx_binary][observed]
+        d_obs <- d[idx_binary][observed]
+        c_obs <- guessing[idx_binary][observed]
+        y_obs <- y[observed]
+
+        eta <-
+          outer(theta_grid, a_obs, "*") +
+          matrix(rep(d_obs, each = length(theta_grid)), nrow = length(theta_grid))
+        c_matrix <- matrix(
+          rep(c_obs, each = length(theta_grid)),
+          nrow = length(theta_grid)
+        )
+        probability <- c_matrix + (1 - c_matrix) * plogis(eta)
+        probability <- pmin(pmax(probability, 1e-12), 1 - 1e-12)
+
+        y_matrix <- matrix(
+          rep(y_obs, each = length(theta_grid)),
+          nrow = length(theta_grid)
+        )
+        log_likelihood <-
+          log_likelihood +
+          rowSums(
+            y_matrix * log(probability) +
+              (1 - y_matrix) * log1p(-probability)
+          )
+      }
+    }
+
+    if (any(idx_gpcm)) {
+      y <- response_vector[idx_gpcm]
+      observed <- !is.na(y)
+
+      if (any(observed)) {
+        a_obs <- a[idx_gpcm][observed]
+        b1_obs <- b1[idx_gpcm][observed]
+        b2_obs <- b2[idx_gpcm][observed]
+        y_obs <- y[observed]
+
+        theta_a <- outer(theta_grid, a_obs, "*")
+        eta1 <-
+          theta_a -
+          matrix(
+            rep(a_obs * b1_obs, each = length(theta_grid)),
+            nrow = length(theta_grid)
+          )
+        eta2 <-
+          2 * theta_a -
+          matrix(
+            rep(a_obs * (b1_obs + b2_obs), each = length(theta_grid)),
+            nrow = length(theta_grid)
+          )
+
+        zero_matrix <- matrix(0, nrow = nrow(eta1), ncol = ncol(eta1))
+        max_eta <- pmax(zero_matrix, eta1, eta2)
+        log_denominator <-
+          max_eta +
+          log(
+            exp(-max_eta) +
+              exp(eta1 - max_eta) +
+              exp(eta2 - max_eta)
+          )
+
+        log_probability <- matrix(
+          0,
+          nrow = length(theta_grid),
+          ncol = length(y_obs)
+        )
+        for (j in seq_along(y_obs)) {
+          log_probability[, j] <- switch(
+            as.character(y_obs[j]),
+            `0` = -log_denominator[, j],
+            `1` = eta1[, j] - log_denominator[, j],
+            `2` = eta2[, j] - log_denominator[, j]
+          )
+        }
+
+        log_likelihood <- log_likelihood + rowSums(log_probability)
+      }
+    }
+
+    log_likelihood
+  }
+
+  # ---------------------------------------------------------------------------
+  # Progress bar
+  # ---------------------------------------------------------------------------
+  progress_enabled <- isTRUE(progress)
+  progress_bar <- NULL
+
+  if (progress_enabled) {
+    progress_bar <- utils::txtProgressBar(
+      min = 0,
+      max = N,
+      initial = 0,
+      style = 3
+    )
+  } else if (isTRUE(verbose)) {
+    message("Generating plausible values under the FARLR model...")
+  }
+
+  close_progress_bar <- function() {
+    if (inherits(progress_bar, "txtProgressBar")) {
+      close(progress_bar)
+      progress_bar <<- NULL
+    }
+    invisible(NULL)
+  }
+  on.exit(close_progress_bar(), add = TRUE)
+
+  # ---------------------------------------------------------------------------
+  # EAP moments and plausible-value draws
+  # ---------------------------------------------------------------------------
+  eap_mean <- numeric(N)
+  eap_variance <- numeric(N)
+  posterior_mode <- numeric(N)
+  plausible_values <- matrix(NA_real_, nrow = N, ncol = npv)
+
+  for (i in seq_len(N)) {
+    lower <- theta_range[1L]
+    upper <- theta_range[2L]
+
+    if (isTRUE(adaptive_range)) {
+      lower <- min(lower, prior_mean[i] - range_sd * sigma)
+      upper <- max(upper, prior_mean[i] + range_sd * sigma)
+    }
+
+    theta_grid <- seq(lower, upper, length.out = n_quad)
+    log_likelihood <- log_item_likelihood(response[i, ], theta_grid)
+    log_prior <- dnorm(
+      theta_grid,
+      mean = prior_mean[i],
+      sd = sigma,
+      log = TRUE
+    )
+    log_posterior <- log_likelihood + log_prior
+
+    if (all(!is.finite(log_posterior))) {
+      stop("Non-finite posterior for subject ", i, ".", call. = FALSE)
+    }
+
+    log_posterior <- log_posterior - max(log_posterior, na.rm = TRUE)
+    posterior_probability <- exp(log_posterior)
+    posterior_probability <-
+      posterior_probability / sum(posterior_probability)
+
+    eap_mean[i] <- sum(theta_grid * posterior_probability)
+    eap_variance[i] <- sum(
+      (theta_grid - eap_mean[i])^2 * posterior_probability
+    )
+    eap_variance[i] <- max(eap_variance[i], 0)
+    posterior_mode[i] <- theta_grid[which.max(posterior_probability)]
+
+    if (draw_method == "normal") {
+      plausible_values[i, ] <- rnorm(
+        npv,
+        mean = eap_mean[i],
+        sd = sqrt(eap_variance[i])
+      )
+    } else {
+      plausible_values[i, ] <- sample(
+        theta_grid,
+        size = npv,
+        replace = TRUE,
+        prob = posterior_probability
+      )
+    }
+
+    if (inherits(progress_bar, "txtProgressBar")) {
+      utils::setTxtProgressBar(progress_bar, i)
+    }
+  }
+
+  close_progress_bar()
+
+  colnames(plausible_values) <- paste0("_farl", seq_len(npv))
+
+  mean_difference <- NA_real_
+  if (!is.null(theta)) {
+    theta <- as.numeric(theta)
+    if (length(theta) != N || any(!is.finite(theta))) {
+      stop("theta must contain N finite values.", call. = FALSE)
+    }
+    mean_difference <- mean(eap_mean) - mean(theta)
+    if (isTRUE(verbose)) {
+      message(
+        "Difference using estimate: ",
+        round(mean_difference, 3)
+      )
+    }
+  }
+
+  subject_ids <- if (!is.null(mmlcomp$stuDat)) {
+    as.character(mmlcomp$stuDat[[1L]])
+  } else {
+    as.character(seq_len(N))
+  }
+
+  datPVs <- data.frame(
+    id = subject_ids,
+    plausible_values,
+    check.names = FALSE
+  )
+  colnames(datPVs) <- base::c("id", paste0("_farl", seq_len(npv)))
+
+  if (isTRUE(return_details)) {
+    return(list(
+      data = plausible_values,
+      datPVs = datPVs,
+      EAP_estimates = eap_mean,
+      EAP_variance = eap_variance,
+      posterior_mode = posterior_mode,
+      prior_mean = prior_mean,
+      sigma = sigma,
+      draw_method = draw_method,
+      mean_difference = mean_difference
+    ))
+  }
+
+  attr(datPVs, "EAP") <- eap_mean
+  attr(datPVs, "EAP_variance") <- eap_variance
+  attr(datPVs, "posterior_mode") <- posterior_mode
+  attr(datPVs, "draw_method") <- draw_method
+  datPVs
 }

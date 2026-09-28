@@ -1,8 +1,8 @@
 export(Farlr_mml)
-export(mml_test)
 export(Farlr_drawPVs)
 export(Dire_mml)
 export(Dire_drawPVs)
+
 import(MASS)
 import(Matrix)
 import(paran)

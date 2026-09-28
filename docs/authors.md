@@ -12,16 +12,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/yijunchenguw/FARL/blob/HEAD/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/MAP-LAB-UW/FARL/blob/HEAD/DESCRIPTION)
 
-Cheng Y, Wang C, Xu G (2026). *FARL: Factor-Adjusted Regularized Latent
-Regression*. R package version 0.1.0,
-<https://yijunchenguw.github.io/FARL/>.
+Cheng Y, Wang C, Xu G (2026). *FARL: FARL: Use Factor-Augmented
+Regularized Latent Regression for Large-Scale Assessment*. R package
+version 0.1.0, <https://MAP-LAB-UW.github.io/FARL/>.
 
     @Manual{,
-      title = {FARL: Factor-Adjusted Regularized Latent Regression},
+      title = {FARL: FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment},
       author = {Yijun Cheng and Chun Wang and Gongjun Xu},
       year = {2026},
       note = {R package version 0.1.0},
-      url = {https://yijunchenguw.github.io/FARL/},
+      url = {https://MAP-LAB-UW.github.io/FARL/},
     }

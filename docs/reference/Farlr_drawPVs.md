@@ -8,7 +8,21 @@ mean and variance estimates.
 ## Usage
 
 ``` r
-Farlr_drawPVs(mmlcomp, npv = 10L, verbose = TRUE)
+Farlr_drawPVs(
+  mmlcomp,
+  npv = 10L,
+  theta = NULL,
+  n_quad = 30L,
+  theta_range = base::c(-4, 4),
+  adaptive_range = FALSE,
+  range_sd = 4,
+  draw_method = base::c("normal", "grid"),
+  design_matrix = NULL,
+  seed = NULL,
+  verbose = TRUE,
+  progress = TRUE,
+  return_details = TRUE
+)
 ```
 
 ## Arguments

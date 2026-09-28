@@ -4,55 +4,66 @@
 \name{FARL-package}
 \alias{FARL}
 \alias{FARL-package}
-\title{FARL: Factor-Augmented Regularized Latent Regression for Large-Scale Assessment}
+\title{FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment}
 \description{
-FARL is developed to support large-scale assessment (LSA) analyses, in which
-latent regression models are used to integrate students’ background information
-and to generate plausible values (PVs) for secondary analysis. In LSA settings,
-background variables are often high-dimensional and highly correlated, posing
-substantial challenges for traditional latent regression approaches.
+FARL supports latent regression analyses for large-scale assessments (LSAs),
+where student background information is incorporated into the population
+model used to generate plausible values (PVs). These background variables
+are often high-dimensional and strongly dependent, which can make
+conventional latent regression unstable and complicate variable selection.
 }
 \details{
-FARL implements factor-augmented regularized latent regression (FARLR), an
-innovative framework that jointly models common factors and idiosyncratic
-components. Regularization is employed to select relevant idiosyncratic
-predictors, yielding interpretable regression results while maintaining
-congeniality and estimation stability.
+FARL implements factor-augmented regularized latent regression (FARLR).
+FARLR decomposes covariate variation into common latent factors and
+idiosyncratic components, includes both components in the latent regression,
+and uses sparse regularization to select a parsimonious set of relevant
+covariates. This structure is designed to stabilize estimation while
+retaining interpretable background-variable effects.
 }
-\section{Latent regression models}{
+\section{Model estimation}{
 
 \itemize{
-  \item \code{\link{Farlr_mml}} fits the factor-augmented regularized latent regression model via marginal maximum likelihood
-    \itemize{
-      \item Method 1: \code{FARLR_EMM}
-      \item Method 2: \code{FARLR_Debias}
-    }
+  \item \code{\link{Farlr_mml}} is the unified interface for fitting FARLR
+  models. It supports two estimation methods:
+  \itemize{
+    \item \code{method = "FARLR_EMM"}: importance-sampling-based
+    expectation-maximization-maximization estimation, with a regularized
+    variable-selection step followed by an unpenalized coefficient update.
+    \item \code{method = "FARLR_Debias"}: regularized estimation using the
+    factor and idiosyncratic components, followed by correction of LASSO
+    shrinkage bias.
+  }
+  \item \code{\link{Dire_mml}} fits a PCA-based DIRE latent regression model
+  for comparison with the FARLR approaches.
+}
 }
 
+\section{Plausible-value generation}{
 
 \itemize{
- \item \code{\link{Dire_mml}} fits the DIRE latent regression model
-}
-}
-
-\section{Plausible value generation}{
-
-\itemize{
-  \item \code{\link{Farlr_drawPVs}} generates plausible values under the FARLR framework
-}
-
-
-\itemize{
-  \item \code{\link{Dire_drawPVs}} generates plausible values under the Dire framework
+  \item \code{\link{Farlr_drawPVs}} generates plausible values from the
+  posterior latent-trait distributions implied by a fitted FARLR model.
+  \item \code{\link{Dire_drawPVs}} generates plausible values from a fitted
+  DIRE model.
 }
 }
 
 \section{Simulation and example data}{
 
 \itemize{
-  \item Built-in example datasets illustrating FARLR estimation and PV generation
-  \item Utility functions for simulation studies in large-scale assessment settings
+  \item \code{\link{sim_a1}} contains simulated dichotomous 2PL responses,
+  item parameters, and high-dimensional background covariates.
+  \item \code{\link{sim_a2}} contains simulated mixed 3PL and GPCM responses,
+  item parameters, and high-dimensional background covariates.
 }
+}
+
+\section{Methodological scope}{
+
+FARLR is intended to improve compatibility between plausible-value
+generation and common secondary analyses, but it does not guarantee
+congeniality in the strict statistical sense. The current FARLR estimators
+are designed for a unidimensional latent proficiency model.
 }
 
 \seealso{
@@ -65,6 +76,12 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Yijun Cheng \email{chengxb@uw.edu} (\href{https://orcid.org/0000-0002-0671-9193}{ORCID})
+
+Authors:
+\itemize{
+  \item Chun Wang \email{wang4066@uw.edu} (\href{https://orcid.org/0000-0003-2695-9781}{ORCID})
+  \item Gongjun Xu \email{gongjun@umich.edu} (\href{https://orcid.org/0000-0003-4023-5413}{ORCID})
+}
 
 }
 \keyword{internal}

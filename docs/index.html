@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Factor-Adjusted Regularized Latent Regression • FARL</title>
+<title>FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment • FARL</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -16,9 +16,12 @@
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Factor-Adjusted Regularized Latent Regression">
-<meta name="description" content="Implements factor-adjusted regularized latent regression models for large-scale assessment and multilevel latent variable analysis. The package provides estimation, simulation, and diagnostic tools for FARL-type models under various conditions.">
-<meta property="og:description" content="Implements factor-adjusted regularized latent regression models for large-scale assessment and multilevel latent variable analysis. The package provides estimation, simulation, and diagnostic tools for FARL-type models under various conditions.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
+<meta property="og:title" content="FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment">
+<meta name="description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components and supports plausible-value generation for group-level inference.
+">
+<meta property="og:description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components and supports plausible-value generation for group-level inference.
+">
 <meta property="og:image" content="https://yijunchenguw.github.io/FARL/logo.png">
 </head>
 <body>
@@ -46,7 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/yijunchenguw/FARL/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/MAP-LAB-UW/FARL/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -56,36 +59,38 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="farl-use-factor-augmented-regularized-latent-regression-for-large-scale-assessment-">FARL: Use Factor-augmented Regularized Latent Regression for Large Scale Assessment <a class="anchor" aria-label="anchor" href="#farl-use-factor-augmented-regularized-latent-regression-for-large-scale-assessment-"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="farl-use-factor-augmented-regularized-latent-regression-for-large-scale-assessment-">FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment <a class="anchor" aria-label="anchor" href="#farl-use-factor-augmented-regularized-latent-regression-for-large-scale-assessment-"></a>
 </h1>
 </div>
 <!-- badges: start -->
 <!-- badges: end -->
-<p>FARL models integrate latent trait estimation with regularized regression, enabling scalable modeling of relationships between latent abilities and high-dimensional covariates.</p>
+<p>FARL implements factor-augmented regularized latent regression (FARLR) for large-scale assessments. FARLR addresses high-dimensional, strongly dependent background variables by decomposing their variation into common latent factors and idiosyncratic components. Both components enter the latent regression, while sparse regularization selects a parsimonious set of relevant covariates. This structure stabilizes estimation, preserves the interpretability of the selected background variables, and supports plausible-value generation for group-level inference.</p>
 <ul>
-<li><p>FARLR_EMM: Factor-augmented regularized latent regression estimated via an iterative EMM-style procedure.</p></li>
-<li><p>FARLR_debias: Factor-augmented regularized latent regression with post debiasing.</p></li>
-<li><p>FARLR_drawPVs: Drawing plausible values from fitted FARLR models.</p></li>
-<li><p>Dire_mml: Marginal maximum likelihood estimation of DIRE models.</p></li>
-<li><p>Dire_drawPVs: Drawing plausible values from fitted DIRE models.</p></li>
+<li><p><code><a href="reference/Farlr_mml.html">Farlr_mml()</a></code>: Provides the unified interface for fitting FARLR models. Use <code>method = "FARLR_EMM"</code> for importance-sampling-based expectation-maximization-maximization estimation, or <code>method = "FARLR_Debias"</code> to correct shrinkage bias in the regularized coefficients.</p></li>
+<li><p><code><a href="reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code>: Draws plausible values from the posterior latent-trait distributions implied by a fitted FARLR model.</p></li>
+<li><p><code><a href="reference/Dire_mml.html">Dire_mml()</a></code>: Fits the PCA-based DIRE latent regression used as a comparison approach for high-dimensional background variables.</p></li>
+<li><p><code><a href="reference/Dire_drawPVs.html">Dire_drawPVs()</a></code>: Draws plausible values from fitted DIRE models.</p></li>
 </ul>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>To install this package from source:</p>
 <ol style="list-style-type: decimal">
-<li><p><strong>Windows</strong> users may need to install the <a href="https://CRAN.R-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> and include the checkbox option of installing Rtools to their path for easier command line usage. <strong>Mac</strong> users may need to install Xcode command line tools by <code>sudo xcode-select --install</code> in the terminal, and then install <a href="https://mac.r-project.org/tools/" class="external-link">GNU Fortran compiler</a>. Most <strong>Linux</strong> distributions should already have up to date compilers (or if not they can be installed/updated easily).</p></li>
-<li><p>Install the <code>devtools</code> package (if necessary), and install the package from <a href="https://github.com/" class="external-link">GitHub</a> with</p></li>
+<li><p><strong>Windows</strong> users may need to install <a href="https://CRAN.R-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> and select the option to add Rtools to the system path. <strong>macOS</strong> users may need to install the Xcode command-line tools by running <code>sudo xcode-select --install</code> in Terminal and then install the <a href="https://mac.r-project.org/tools/" class="external-link">GNU Fortran compiler</a>. Most <strong>Linux</strong> distributions already include suitable compilers, or provide them through the system package manager.</p></li>
+<li><p>Install <code>devtools</code> if necessary, and install FARL from GitHub:</p></li>
 </ol>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://devtools.r-lib.org/" class="external-link">devtools</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"yijunchenguw/FARL"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"devtools"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"MAP-LAB-UW/FARL"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu">torch</span><span class="fu">::</span><span class="fu"><a href="https://torch.mlverse.org/docs/reference/install_torch.html" class="external-link">install_torch</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="tutorial">Tutorial<a class="anchor" aria-label="anchor" href="#tutorial"></a>
 </h2>
-<p>After installing the <code>FARL</code> package, open its tutorial by running</p>
+<p>After installing the <code>FARL</code> package, open its tutorial by running:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"FARL"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -93,7 +98,7 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/yijunchenguw/FARL/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/MAP-LAB-UW/FARL/" class="external-link">Browse source code</a></li>
 </ul>
 </div>
 

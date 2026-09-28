@@ -8,13 +8,21 @@ Farlr_mml(
   X,
   Y,
   parTab,
-  n_sam = 15,
-  method = "FARLR_EMM",
-  lambda = seq(0.1, 0.5, by = 0.1),
+  n_sam = 25L,
+  method = base::c("FARLR_EMM", "FARLR_Debias"),
+  lambda = seq(0.05, 0.5, length.out = 10),
+  main = integer(0),
   delta.criteria = 0.001,
-  iter.max = 500,
-  window.size = 50,
-  verbose = TRUE
+  iter.max = 500L,
+  window.size = 200L,
+  verbose = FALSE,
+  progress = TRUE,
+  seed = NULL,
+  K_hat = NULL,
+  proposal_inflation = 0.2,
+  n_sam_final = 60L,
+  paran_iterations = 500L,
+  paran_centile = 0
 )
 }
 \arguments{

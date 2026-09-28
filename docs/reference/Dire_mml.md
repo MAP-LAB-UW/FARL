@@ -1,13 +1,10 @@
-# DIRE Marginal Maximum Likelihood Estimation
+# DIRE Marginal Maximum Likelihood Estimation with Optional PCA
 
-Fits a Direct Item Regression Effects (DIRE) model using a marginal
-maximum likelihood (MML) framework. The DIRE model extends standard item
-response theory by allowing item parameters to depend directly on
-person-level covariates, enabling the assessment of covariate-induced
-differential item functioning (DIF). This function provides a unified
-estimation interface for dichotomous and polytomous item responses,
-supports complex survey designs, and allows flexible numerical
-integration and optimization options.
+Fits a DIRE model with \`Dire::mml()\`. When \`X\` and \`main_vars\` are
+supplied, the function first extracts PCs with
+\`PCA_extraction_merge()\`, merges the PC scores into \`stuDat\`,
+appends the PC terms to \`formula\`, and then generates the fitted
+\`mmlcomp\` object.
 
 ## Usage
 
@@ -32,7 +29,12 @@ Dire_mml(
   PSUVar = NULL,
   fast = TRUE,
   calcCor = TRUE,
-  verbose = 0
+  verbose = 0,
+  X = NULL,
+  main_vars = NULL,
+  pca_type = c("cov", "cor"),
+  use_residual = TRUE,
+  var_threshold = 0.9
 )
 ```
 
@@ -40,158 +42,102 @@ Dire_mml(
 
 - formula:
 
-  Formula. A model formula specifying person-level covariates entering
-  the DIRE model. The left-hand side is ignored; the right-hand side
-  defines covariates with potential direct effects on item parameters.
+  Formula passed to \`Dire::mml()\`. It should already contain the main
+  covariates that are to remain explicit in the latent regression.
 
 - stuItems:
 
-  Data frame. Long-format item response data containing item identifiers
-  and response values for each individual.
+  Long-format item response data.
 
 - stuDat:
 
-  Data frame. Person-level data frame containing covariates referenced
-  in `formula`.
+  Person-level data. Its row order must match the row order of \`X\`
+  when PCA is requested.
 
 - idVar:
 
-  Character. Name of the variable in `stuItems` identifying individuals.
+  Character name of the individual identifier.
 
 - dichotParamTab:
 
-  Data frame or `NULL`. Item parameter table for dichotomous items. If
-  `NULL`, dichotomous items are not modeled.
+  Dichotomous item parameter table or \`NULL\`.
 
 - polyParamTab:
 
-  Data frame or `NULL`. Item parameter table for polytomous items. If
-  `NULL`, polytomous items are not modeled.
+  Polytomous item parameter table or \`NULL\`.
 
 - testScale:
 
-  Character vector or `NULL`. Optional specification of test or scale
-  membership for items.
+  Optional test-scale table.
 
 - Q:
 
-  Integer. Number of quadrature nodes used for numerical integration.
-  Defaults to `30`.
+  Number of quadrature nodes.
 
-- minNode:
+- minNode, maxNode:
 
-  Numeric. Lower bound of the quadrature nodes. Defaults to `-4`.
-
-- maxNode:
-
-  Numeric. Upper bound of the quadrature nodes. Defaults to `4`.
+  Lower and upper quadrature bounds.
 
 - polyModel:
 
-  Character. Polytomous item response model to be used. Supported
-  options include `"GPCM"` and `"GRM"`.
+  Polytomous model, \`"GPCM"\` or \`"GRM"\`.
 
 - weightVar:
 
-  Character or `NULL`. Optional sampling weight variable in `stuDat`
-  used for weighted likelihood estimation.
+  Optional sampling-weight variable.
 
 - multiCore:
 
-  Logical. If `TRUE`, enables parallel computation for likelihood
-  evaluation where supported. Defaults to `FALSE`.
+  Whether to use supported parallel calculations.
 
 - bobyqaControl:
 
-  List or `NULL`. Optional control parameters passed to the `bobyqa`
-  optimizer for numerical optimization.
+  Optional optimizer controls.
 
 - composite:
 
-  Logical. If `TRUE`, uses a composite likelihood approximation for
-  estimation. Defaults to `TRUE`.
+  Whether to use composite likelihood.
 
-- strataVar:
+- strataVar, PSUVar:
 
-  Character or `NULL`. Optional stratification variable for complex
-  survey designs.
-
-- PSUVar:
-
-  Character or `NULL`. Optional primary sampling unit (PSU) variable for
-  complex survey designs.
+  Optional complex-survey variables.
 
 - fast:
 
-  Logical. If `TRUE`, uses computational shortcuts to accelerate
-  estimation. Defaults to `TRUE`.
+  Whether to use DIRE computational shortcuts.
 
 - calcCor:
 
-  Logical. If `TRUE`, computes correlation matrices for estimated item
-  effects. Defaults to `TRUE`.
+  Whether to calculate the coefficient correlation matrix.
 
 - verbose:
 
-  Integer. Verbosity level controlling diagnostic output. `0` suppresses
-  output; larger values produce more detailed messages.
+  DIRE verbosity level.
+
+- X:
+
+  Optional numeric covariate matrix/data frame used for PCA. Leave
+  \`NULL\` to fit the original non-PCA DIRE model.
+
+- main_vars:
+
+  Character vector naming the main variables in \`X\`.
+
+- pca_type:
+
+  PCA based on covariance (\`"cov"\`) or correlation (\`"cor"\`).
+
+- use_residual:
+
+  Whether to perform residual PCA.
+
+- var_threshold:
+
+  Cumulative explained-variance threshold for selecting PCs.
 
 ## Value
 
-A list containing estimation results from the DIRE model, typically
-including:
-
-- `item.par`:
-
-  Estimated baseline item parameters.
-
-- `dire.coef`:
-
-  Estimated direct item regression effect coefficients associated with
-  person-level covariates.
-
-- `vcov`:
-
-  Estimated variance–covariance matrix of parameter estimates.
-
-- `LogLik`:
-
-  Maximized marginal (or composite) log-likelihood value.
-
-- `convergence`:
-
-  Indicator of convergence status of the numerical optimization.
-
-## Details
-
-The DIRE model allows person-level covariates to enter item parameter
-models directly, providing a flexible framework for assessing
-covariate-related DIF without requiring anchor items. Latent variables
-are integrated out using Gaussian quadrature with `Q` nodes over the
-interval \[`minNode`, `maxNode`\]. For large-scale assessments or
-complex survey data, composite likelihood and survey design adjustments
-can be employed to improve computational feasibility.
-
-## See also
-
-[`mirt`](https://philchalmers.github.io/mirt/reference/mirt.html),
-[`lmer`](https://rdrr.io/pkg/lme4/man/lmer.html),
-[`optim`](https://rdrr.io/r/stats/optim.html)
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-fit <- Dire_mml(
-  formula = ~ gender + ses,
-  stuItems = stuItems,
-  stuDat = stuDat,
-  idVar = "student_id",
-  dichotParamTab = dichotTab,
-  polyParamTab = polyTab,
-  polyModel = "GPCM",
-  Q = 30,
-  verbose = 1
-)
-} # }
-```
+The fitted DIRE \`mmlcomp\` object. When PCA is used, the returned
+object also contains \`pca_object\` and \`formula_before_pca\`
+components; its standard \`formula\` and \`stuDat\` components contain
+the augmented versions.

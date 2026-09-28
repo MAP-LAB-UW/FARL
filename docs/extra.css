@@ -1,0 +1,12 @@
+/* Use one consistent logo size on all pkgdown pages. */
+img[src*="logo.png"] {
+  height: 120px !important;
+  width: auto !important;
+  max-height: 120px !important;
+  object-fit: contain;
+}
+
+.navbar-brand {
+  padding-top: 0;
+  padding-bottom: 0;
+}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/DIRE_usage.R
 \name{Dire_mml}
 \alias{Dire_mml}
-\title{DIRE Marginal Maximum Likelihood Estimation}
+\title{DIRE Marginal Maximum Likelihood Estimation with Optional PCA}
 \usage{
 Dire_mml(
   formula,
@@ -24,119 +24,73 @@ Dire_mml(
   PSUVar = NULL,
   fast = TRUE,
   calcCor = TRUE,
-  verbose = 0
+  verbose = 0,
+  X = NULL,
+  main_vars = NULL,
+  pca_type = c("cov", "cor"),
+  use_residual = TRUE,
+  var_threshold = 0.9
 )
 }
 \arguments{
-\item{formula}{Formula. A model formula specifying person-level covariates
-entering the DIRE model. The left-hand side is ignored; the right-hand side
-defines covariates with potential direct effects on item parameters.}
+\item{formula}{Formula passed to `Dire::mml()`. It should already contain
+the main covariates that are to remain explicit in the latent regression.}
 
-\item{stuItems}{Data frame. Long-format item response data containing item
-identifiers and response values for each individual.}
+\item{stuItems}{Long-format item response data.}
 
-\item{stuDat}{Data frame. Person-level data frame containing covariates
-referenced in \code{formula}.}
+\item{stuDat}{Person-level data. Its row order must match the row order of
+`X` when PCA is requested.}
 
-\item{idVar}{Character. Name of the variable in \code{stuItems} identifying
-individuals.}
+\item{idVar}{Character name of the individual identifier.}
 
-\item{dichotParamTab}{Data frame or \code{NULL}. Item parameter table for
-dichotomous items. If \code{NULL}, dichotomous items are not modeled.}
+\item{dichotParamTab}{Dichotomous item parameter table or `NULL`.}
 
-\item{polyParamTab}{Data frame or \code{NULL}. Item parameter table for
-polytomous items. If \code{NULL}, polytomous items are not modeled.}
+\item{polyParamTab}{Polytomous item parameter table or `NULL`.}
 
-\item{testScale}{Character vector or \code{NULL}. Optional specification of
-test or scale membership for items.}
+\item{testScale}{Optional test-scale table.}
 
-\item{Q}{Integer. Number of quadrature nodes used for numerical integration.
-Defaults to \code{30}.}
+\item{Q}{Number of quadrature nodes.}
 
-\item{minNode}{Numeric. Lower bound of the quadrature nodes. Defaults to
-\code{-4}.}
+\item{minNode, maxNode}{Lower and upper quadrature bounds.}
 
-\item{maxNode}{Numeric. Upper bound of the quadrature nodes. Defaults to
-\code{4}.}
+\item{polyModel}{Polytomous model, `"GPCM"` or `"GRM"`.}
 
-\item{polyModel}{Character. Polytomous item response model to be used.
-Supported options include \code{"GPCM"} and \code{"GRM"}.}
+\item{weightVar}{Optional sampling-weight variable.}
 
-\item{weightVar}{Character or \code{NULL}. Optional sampling weight variable
-in \code{stuDat} used for weighted likelihood estimation.}
+\item{multiCore}{Whether to use supported parallel calculations.}
 
-\item{multiCore}{Logical. If \code{TRUE}, enables parallel computation for
-likelihood evaluation where supported. Defaults to \code{FALSE}.}
+\item{bobyqaControl}{Optional optimizer controls.}
 
-\item{bobyqaControl}{List or \code{NULL}. Optional control parameters passed
-to the \code{bobyqa} optimizer for numerical optimization.}
+\item{composite}{Whether to use composite likelihood.}
 
-\item{composite}{Logical. If \code{TRUE}, uses a composite likelihood
-approximation for estimation. Defaults to \code{TRUE}.}
+\item{strataVar, PSUVar}{Optional complex-survey variables.}
 
-\item{strataVar}{Character or \code{NULL}. Optional stratification variable
-for complex survey designs.}
+\item{fast}{Whether to use DIRE computational shortcuts.}
 
-\item{PSUVar}{Character or \code{NULL}. Optional primary sampling unit (PSU)
-variable for complex survey designs.}
+\item{calcCor}{Whether to calculate the coefficient correlation matrix.}
 
-\item{fast}{Logical. If \code{TRUE}, uses computational shortcuts to accelerate
-estimation. Defaults to \code{TRUE}.}
+\item{verbose}{DIRE verbosity level.}
 
-\item{calcCor}{Logical. If \code{TRUE}, computes correlation matrices for
-estimated item effects. Defaults to \code{TRUE}.}
+\item{X}{Optional numeric covariate matrix/data frame used for PCA. Leave
+`NULL` to fit the original non-PCA DIRE model.}
 
-\item{verbose}{Integer. Verbosity level controlling diagnostic output.
-\code{0} suppresses output; larger values produce more detailed messages.}
+\item{main_vars}{Character vector naming the main variables in `X`.}
+
+\item{pca_type}{PCA based on covariance (`"cov"`) or correlation (`"cor"`).}
+
+\item{use_residual}{Whether to perform residual PCA.}
+
+\item{var_threshold}{Cumulative explained-variance threshold for selecting
+PCs.}
 }
 \value{
-A list containing estimation results from the DIRE model, typically
-including:
-\describe{
-  \item{\code{item.par}}{Estimated baseline item parameters.}
-  \item{\code{dire.coef}}{Estimated direct item regression effect coefficients
-  associated with person-level covariates.}
-  \item{\code{vcov}}{Estimated variance–covariance matrix of parameter
-  estimates.}
-  \item{\code{LogLik}}{Maximized marginal (or composite) log-likelihood value.}
-  \item{\code{convergence}}{Indicator of convergence status of the numerical
-  optimization.}
-}
+The fitted DIRE `mmlcomp` object. When PCA is used, the returned
+  object also contains `pca_object` and `formula_before_pca` components; its
+  standard `formula` and `stuDat` components contain the augmented versions.
 }
 \description{
-Fits a Direct Item Regression Effects (DIRE) model using a marginal maximum
-likelihood (MML) framework. The DIRE model extends standard item response
-theory by allowing item parameters to depend directly on person-level
-covariates, enabling the assessment of covariate-induced differential item
-functioning (DIF). This function provides a unified estimation interface for
-dichotomous and polytomous item responses, supports complex survey designs,
-and allows flexible numerical integration and optimization options.
-}
-\details{
-The DIRE model allows person-level covariates to enter item parameter models
-directly, providing a flexible framework for assessing covariate-related DIF
-without requiring anchor items. Latent variables are integrated out using
-Gaussian quadrature with \code{Q} nodes over the interval
-[\code{minNode}, \code{maxNode}]. For large-scale assessments or complex survey
-data, composite likelihood and survey design adjustments can be employed to
-improve computational feasibility.
-}
-\examples{
-\dontrun{
-fit <- Dire_mml(
-  formula = ~ gender + ses,
-  stuItems = stuItems,
-  stuDat = stuDat,
-  idVar = "student_id",
-  dichotParamTab = dichotTab,
-  polyParamTab = polyTab,
-  polyModel = "GPCM",
-  Q = 30,
-  verbose = 1
-)
-}
-
-}
-\seealso{
-\code{\link[mirt]{mirt}}, \code{\link[lme4]{lmer}}, \code{\link[stats]{optim}}
+Fits a DIRE model with `Dire::mml()`. When `X` and `main_vars` are supplied,
+the function first extracts PCs with `PCA_extraction_merge()`, merges the PC
+scores into `stuDat`, appends the PC terms to `formula`, and then generates
+the fitted `mmlcomp` object.
 }
