@@ -73,6 +73,11 @@ retaining interpretable background-variable effects.</p>
 </ul></li>
 <li><p><code><a href="Dire_mml.html">Dire_mml</a></code> fits a PCA-based DIRE latent regression model
   for comparison with the FARLR approaches.</p></li>
+<li><p><code><a href="MFARLR_mml.html">MFARLR_mml</a></code> fits multidimensional FARLR by combining
+  dimension-specific sparse covariate screening with joint Gaussian
+  variational expectation-maximization estimation.</p></li>
+<li><p><code><a href="MDIRE_mml.html">MDIRE_mml</a></code> fits the multidimensional PCA-based DIRE
+  comparison model.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="plausible-value-generation">Plausible-value generation<a class="anchor" aria-label="anchor" href="#plausible-value-generation"></a></h2>
@@ -82,6 +87,10 @@ retaining interpretable background-variable effects.</p>
   posterior latent-trait distributions implied by a fitted FARLR model.</p></li>
 <li><p><code><a href="Dire_drawPVs.html">Dire_drawPVs</a></code> generates plausible values from a fitted
   DIRE model.</p></li>
+<li><p><code><a href="MFARLR_drawPVs.html">MFARLR_drawPVs</a></code> generates correlated multidimensional
+  plausible values from a fitted MFARLR model.</p></li>
+<li><p><code><a href="MDIRE_drawPVs.html">MDIRE_drawPVs</a></code> generates plausible values from a fitted
+  multidimensional DIRE model.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="simulation-and-example-data">Simulation and example data<a class="anchor" aria-label="anchor" href="#simulation-and-example-data"></a></h2>
@@ -91,6 +100,8 @@ retaining interpretable background-variable effects.</p>
   item parameters, and high-dimensional background covariates.</p></li>
 <li><p><code><a href="sim_a2.html">sim_a2</a></code> contains simulated mixed 3PL and GPCM responses,
   item parameters, and high-dimensional background covariates.</p></li>
+<li><p><code><a href="sim_m1.html">sim_m1</a></code> contains simulated multidimensional item
+  responses, item parameters, latent traits, and background covariates.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="methodological-scope">Methodological scope<a class="anchor" aria-label="anchor" href="#methodological-scope"></a></h2>
@@ -98,8 +109,9 @@ retaining interpretable background-variable effects.</p>
 
 <p>FARLR is intended to improve compatibility between plausible-value
 generation and common secondary analyses, but it does not guarantee
-congeniality in the strict statistical sense. The current FARLR estimators
-are designed for a unidimensional latent proficiency model.</p>
+congeniality in the strict statistical sense. The package supports both
+unidimensional and multidimensional latent proficiency models; currently,
+<code>MFARLR_mml</code> supports multidimensional binary 2PL items.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

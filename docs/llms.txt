@@ -10,7 +10,9 @@ enter the latent regression, while sparse regularization selects a
 parsimonious set of relevant covariates. This structure stabilizes
 estimation, preserves the interpretability of the selected background
 variables, and supports plausible-value generation for group-level
-inference.
+inference. For multidimensional assessments, FARL jointly estimates the
+regression coefficient matrix and the full latent residual covariance
+through Gaussian variational expectation-maximization.
 
 - [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md):
   Provides the unified interface for fitting FARLR models. Use
@@ -29,6 +31,20 @@ inference.
 
 - [`Dire_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md):
   Draws plausible values from fitted DIRE models.
+
+- [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md):
+  Fits multidimensional FARLR by combining dimension-specific sparse
+  screening with joint GVEM estimation.
+
+- [`MFARLR_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md):
+  Draws correlated multidimensional plausible values from the fitted
+  MFARLR model.
+
+- [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md)
+  and
+  [`MDIRE_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_drawPVs.md):
+  Fit the multidimensional PCA-based comparison model and generate its
+  plausible values.
 
   
 
@@ -66,19 +82,33 @@ vignette("FARL")
 
 # Package index
 
-## Model estimation
+## Unidimensional model estimation
 
 - [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
   : FARLR Marginal Maximum Likelihood Estimation
 - [`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md)
   : DIRE Marginal Maximum Likelihood Estimation with Optional PCA
 
-## Plausible values
+## Unidimensional plausible values
 
 - [`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md)
   : Draw Plausible Values from a Fitted Latent Variable Model
 - [`Dire_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md)
   : Draw Plausible Values from a Fitted DIRE Model
+
+## Multidimensional model estimation
+
+- [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md)
+  : Fit a high-dimensional multidimensional FARLR model
+- [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md)
+  : Fit a Multidimensional DIRE Latent Regression
+
+## Multidimensional plausible values
+
+- [`MFARLR_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md)
+  : Draw Multidimensional Plausible Values from an MFARLR-GVEM Model
+- [`MDIRE_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_drawPVs.md)
+  : Draw Plausible Values from a Multidimensional DIRE Model
 
 ## Simulated datasets
 
@@ -86,6 +116,8 @@ vignette("FARL")
   Simulated Dataset: 1D FARLR-Style Dichotomous Item Responses
 - [`sim_a2`](https://map-lab-uw.github.io/FARL/reference/sim_a2.md) :
   Simulated Dataset: 1D FARLR-Style Mixed-Format Item Responses
+- [`sim_m1`](https://map-lab-uw.github.io/FARL/reference/sim_m1.md) :
+  Simulated Dataset: Multidimensional FARLR Item Responses
 
 # Articles
 

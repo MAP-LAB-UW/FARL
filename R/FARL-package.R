@@ -27,6 +27,11 @@
 #'   }
 #'   \item \code{\link{Dire_mml}} fits a PCA-based DIRE latent regression model
 #'   for comparison with the FARLR approaches.
+#'   \item \code{\link{MFARLR_mml}} fits multidimensional FARLR by combining
+#'   dimension-specific sparse covariate screening with joint Gaussian
+#'   variational expectation-maximization estimation.
+#'   \item \code{\link{MDIRE_mml}} fits the multidimensional PCA-based DIRE
+#'   comparison model.
 #' }
 #'
 #' @section Plausible-value generation:
@@ -35,6 +40,10 @@
 #'   posterior latent-trait distributions implied by a fitted FARLR model.
 #'   \item \code{\link{Dire_drawPVs}} generates plausible values from a fitted
 #'   DIRE model.
+#'   \item \code{\link{MFARLR_drawPVs}} generates correlated multidimensional
+#'   plausible values from a fitted MFARLR model.
+#'   \item \code{\link{MDIRE_drawPVs}} generates plausible values from a fitted
+#'   multidimensional DIRE model.
 #' }
 #'
 #' @section Simulation and example data:
@@ -43,13 +52,16 @@
 #'   item parameters, and high-dimensional background covariates.
 #'   \item \code{\link{sim_a2}} contains simulated mixed 3PL and GPCM responses,
 #'   item parameters, and high-dimensional background covariates.
+#'   \item \code{\link{sim_m1}} contains simulated multidimensional item
+#'   responses, item parameters, latent traits, and background covariates.
 #' }
 #'
 #' @section Methodological scope:
 #' FARLR is intended to improve compatibility between plausible-value
 #' generation and common secondary analyses, but it does not guarantee
-#' congeniality in the strict statistical sense. The current FARLR estimators
-#' are designed for a unidimensional latent proficiency model.
+#' congeniality in the strict statistical sense. The package supports both
+#' unidimensional and multidimensional latent proficiency models; currently,
+#' \code{MFARLR_mml} supports multidimensional binary 2PL items.
 #'
 #' @keywords internal
 "_PACKAGE"

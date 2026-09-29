@@ -21,7 +21,9 @@ enter the latent regression, while sparse regularization selects a
 parsimonious set of relevant covariates. This structure stabilizes
 estimation, preserves the interpretability of the selected background
 variables, and supports plausible-value generation for group-level
-inference.
+inference. For multidimensional assessments, FARL jointly estimates the
+regression coefficient matrix and the full latent residual covariance through
+Gaussian variational expectation-maximization.
 
 - `Farlr_mml()`: Provides the unified interface for fitting FARLR
   models. Use `method = "FARLR_EMM"` for importance-sampling-based
@@ -36,6 +38,15 @@ inference.
   comparison approach for high-dimensional background variables.
 
 - `Dire_drawPVs()`: Draws plausible values from fitted DIRE models.
+
+- `MFARLR_mml()`: Fits multidimensional FARLR by combining
+  dimension-specific sparse screening with joint GVEM estimation.
+
+- `MFARLR_drawPVs()`: Draws correlated multidimensional plausible
+  values from the fitted MFARLR model.
+
+- `MDIRE_mml()` and `MDIRE_drawPVs()`: Fit the multidimensional
+  PCA-based comparison model and generate its plausible values.
 
 <br clear="both" />
 

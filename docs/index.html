@@ -18,9 +18,9 @@
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
 <meta property="og:title" content="FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment">
-<meta name="description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components and supports plausible-value generation for group-level inference.
+<meta name="description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components, supports joint multidimensional covariance estimation, and generates plausible values for group-level inference.
 ">
-<meta property="og:description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components and supports plausible-value generation for group-level inference.
+<meta property="og:description" content="FARL implements factor-augmented regularized latent regression for large-scale assessments with high-dimensional, strongly dependent background variables. It combines common latent factors with sparsely selected idiosyncratic components, supports joint multidimensional covariance estimation, and generates plausible values for group-level inference.
 ">
 <meta property="og:image" content="https://map-lab-uw.github.io/FARL/logo.png">
 </head>
@@ -67,12 +67,15 @@
 <div class="farl-home-logo-wrap">
 <p><img class="farl-home-logo" src="reference/figures/logo.png" width="340" alt="FARL logo"></p>
 </div>
-<p>FARL implements factor-augmented regularized latent regression (FARLR) for large-scale assessments. FARLR addresses high-dimensional, strongly dependent background variables by decomposing their variation into common latent factors and idiosyncratic components. Both components enter the latent regression, while sparse regularization selects a parsimonious set of relevant covariates. This structure stabilizes estimation, preserves the interpretability of the selected background variables, and supports plausible-value generation for group-level inference.</p>
+<p>FARL implements factor-augmented regularized latent regression (FARLR) for large-scale assessments. FARLR addresses high-dimensional, strongly dependent background variables by decomposing their variation into common latent factors and idiosyncratic components. Both components enter the latent regression, while sparse regularization selects a parsimonious set of relevant covariates. This structure stabilizes estimation, preserves the interpretability of the selected background variables, and supports plausible-value generation for group-level inference. For multidimensional assessments, FARL jointly estimates the regression coefficient matrix and the full latent residual covariance through Gaussian variational expectation-maximization.</p>
 <ul>
 <li><p><code><a href="reference/Farlr_mml.html">Farlr_mml()</a></code>: Provides the unified interface for fitting FARLR models. Use <code>method = "FARLR_EMM"</code> for importance-sampling-based expectation-maximization-maximization estimation, or <code>method = "FARLR_Debias"</code> to correct shrinkage bias in the regularized coefficients.</p></li>
 <li><p><code><a href="reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code>: Draws plausible values from the posterior latent-trait distributions implied by a fitted FARLR model.</p></li>
 <li><p><code><a href="reference/Dire_mml.html">Dire_mml()</a></code>: Fits the PCA-based DIRE latent regression used as a comparison approach for high-dimensional background variables.</p></li>
 <li><p><code><a href="reference/Dire_drawPVs.html">Dire_drawPVs()</a></code>: Draws plausible values from fitted DIRE models.</p></li>
+<li><p><code><a href="reference/MFARLR_mml.html">MFARLR_mml()</a></code>: Fits multidimensional FARLR by combining dimension-specific sparse screening with joint GVEM estimation.</p></li>
+<li><p><code><a href="reference/MFARLR_drawPVs.html">MFARLR_drawPVs()</a></code>: Draws correlated multidimensional plausible values from the fitted MFARLR model.</p></li>
+<li><p><code><a href="reference/MDIRE_mml.html">MDIRE_mml()</a></code> and <code><a href="reference/MDIRE_drawPVs.html">MDIRE_drawPVs()</a></code>: Fit the multidimensional PCA-based comparison model and generate its plausible values.</p></li>
 </ul>
 <p><br clear="both"></p>
 <div class="section level2">

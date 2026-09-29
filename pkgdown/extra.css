@@ -12,17 +12,16 @@
   z-index: 2;
   width: 340px;
   max-width: 38%;
-  margin: calc(-1.25rem - 20px) 0 1.5rem 2rem;
-  padding-left: 1.25rem;
-  background: var(--bs-body-bg, #fff);
+  margin: calc(-1.25rem - 10px) 0 1.5rem 2rem;
+  padding-left: 0.35rem;
+  background: transparent;
 }
 
-.farl-home-logo-wrap img.farl-home-logo {
+.farl-home-logo-wrap img {
   display: block;
-  width: 100% !important;
-  height: auto !important;
-  max-height: none !important;
-  object-fit: contain;
+  width: 100%;
+  background: var(--bs-body-bg, #fff);
+  padding: 0.15rem;
 }
 
 @media (min-width: 769px) and (max-width: 991.98px) {

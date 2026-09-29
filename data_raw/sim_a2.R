@@ -2,16 +2,16 @@ library(MASS)
 library(dplyr)
 
 set.seed(3)
-n <- 3000
+n <- 300
 rho <- 1
 sigma_e <- 1
 scaling <- 10
 K <- 2
-p <- 60
+p <- 100
 percent <- 20
 v1 <- 0.5
 v2 <- 1 # for 10:1
-J <- 10
+J <- 6
 
 Sigma <- diag(K)
 Sigma[Sigma == 0] <- runif(K * K - K, -0.2, 0.2)
@@ -206,6 +206,7 @@ parTab <- item_params %>%
 sim_a2 <- list(
   X = X,
   Y = resp,
+  theta = theta,
   a = a,
   b = b,
   c = c_param,

@@ -6,8 +6,9 @@ home:
     FARL implements factor-augmented regularized latent regression for
     large-scale assessments with high-dimensional, strongly dependent
     background variables. It combines common latent factors with sparsely
-    selected idiosyncratic components and supports plausible-value generation
-    for group-level inference.
+    selected idiosyncratic components, supports joint multidimensional
+    covariance estimation, and generates plausible values for group-level
+    inference.
 
 template:
   bootstrap: 5
@@ -32,19 +33,31 @@ navbar:
       href: reference/index.html
 
 reference:
-  - title: Model estimation
+  - title: Unidimensional model estimation
     contents:
       - Farlr_mml
       - Dire_mml
-  - title: Plausible values
+
+  - title: Unidimensional plausible values
     contents:
       - Farlr_drawPVs
       - Dire_drawPVs
+
+  - title: Multidimensional model estimation
+    contents:
+      - MFARLR_mml
+      - MDIRE_mml
+
+  - title: Multidimensional plausible values
+    contents:
+      - MFARLR_drawPVs
+      - MDIRE_drawPVs
 
   - title: Simulated datasets
     contents:
       - sim_a1
       - sim_a2
+      - sim_m1
 
 footer:
   structure:

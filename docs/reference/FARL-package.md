@@ -35,6 +35,14 @@ estimation while retaining interpretable background-variable effects.
   fits a PCA-based DIRE latent regression model for comparison with the
   FARLR approaches.
 
+- [`MFARLR_mml`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md)
+  fits multidimensional FARLR by combining dimension-specific sparse
+  covariate screening with joint Gaussian variational
+  expectation-maximization estimation.
+
+- [`MDIRE_mml`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md)
+  fits the multidimensional PCA-based DIRE comparison model.
+
 ## Plausible-value generation
 
 - [`Farlr_drawPVs`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md)
@@ -43,6 +51,13 @@ estimation while retaining interpretable background-variable effects.
 
 - [`Dire_drawPVs`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md)
   generates plausible values from a fitted DIRE model.
+
+- [`MFARLR_drawPVs`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md)
+  generates correlated multidimensional plausible values from a fitted
+  MFARLR model.
+
+- [`MDIRE_drawPVs`](https://map-lab-uw.github.io/FARL/reference/MDIRE_drawPVs.md)
+  generates plausible values from a fitted multidimensional DIRE model.
 
 ## Simulation and example data
 
@@ -54,12 +69,17 @@ estimation while retaining interpretable background-variable effects.
   contains simulated mixed 3PL and GPCM responses, item parameters, and
   high-dimensional background covariates.
 
+- [`sim_m1`](https://map-lab-uw.github.io/FARL/reference/sim_m1.md)
+  contains simulated multidimensional item responses, item parameters,
+  latent traits, and background covariates.
+
 ## Methodological scope
 
 FARLR is intended to improve compatibility between plausible-value
 generation and common secondary analyses, but it does not guarantee
-congeniality in the strict statistical sense. The current FARLR
-estimators are designed for a unidimensional latent proficiency model.
+congeniality in the strict statistical sense. The package supports both
+unidimensional and multidimensional latent proficiency models;
+currently, `MFARLR_mml` supports multidimensional binary 2PL items.
 
 ## See also
 
