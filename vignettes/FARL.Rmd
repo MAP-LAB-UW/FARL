@@ -61,8 +61,8 @@ Data required for the analyses are summarized below.
 
 | Analysis | Item Responses | Item Parameters | Background Covariates | Main Covariates | Formula |
 | :-: | :-: | :-: | :-: | :-: | :-: |
-| `Farlr_mml(..., method = "FARLR_EMM")` | $\checkmark$ | $\checkmark$ | $\checkmark$ | optional | |
-| `Farlr_mml(..., method = "FARLR_Debias")` | $\checkmark$ | $\checkmark$ | $\checkmark$ | optional | |
+| `Farlr_mml(..., method = "FARLR_EMM")` | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ | |
+| `Farlr_mml(..., method = "FARLR_Debias")` | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ | |
 | `Dire_mml()` | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ |
 
 Here we first use `sim_a1`, a simulated dataset for one-dimensional 2PL
@@ -78,7 +78,15 @@ are coded as 0 or 1, and missing responses may be coded as `NA`.
 data(sim_a1)
 
 dim(sim_a1$Y)
+# [1] 3000   10
 head(sim_a1$Y)
+#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010
+# [1,]    1    1    1    1    1    1    0    1    1    1
+# [2,]    0    0    1    0    1    0    0    1    1    0
+# [3,]    1    1    1    0    0    0    0    0    1    0
+# [4,]    0    0    1    0    1    0    0    0    0    0
+# [5,]    1    0    1    0    1    1    0    1    0    0
+# [6,]    0    0    1    0    1    1    0    1    1    0
 ```
 
 ## Background covariates
@@ -88,7 +96,15 @@ be binary or continuous, but each column must have positive variance.
 
 ```{r sim-a1-covariates}
 dim(sim_a1$X)
+# [1] 3000   60
 head(sim_a1$X[, 1:10])
+#      [,1] [,2]       [,3] [,4] [,5] [,6] [,7]       [,8] [,9]      [,10]
+# [1,]    1    1  2.0679032    1    1    1    1  1.3037993    1 1.09682610
+# [2,]    1    0  0.1913680    0    1    1    0  0.2450981    1 0.63345311
+# [3,]    1    1  0.9718647    1    1    1    1  0.1302181    0 0.36494637
+# [4,]    0    0 -0.4845058    1    0    0    0  0.1197165    0 0.21706507
+# [5,]    1    1  0.8427349    1    1    1    0  0.1999399    1 0.47819559
+# [6,]    0    1  0.2229768    1    1    1    1 -0.4628130    1 0.04376757
 ```
 
 The `main` argument contains the column indices of primary covariates. These
@@ -107,6 +123,17 @@ difficulty, and `c` is zero.
 
 ```{r sim-a1-parameters}
 sim_a1$parTab
+
+# 1	-0.1280856	1.0005257	0	item1	comp	main	1.0005257	-0.1280856	
+# 2	0.4959430	1.1258010	0	item2	comp	main	1.1258010	0.4959430	
+# 3	-0.8648743	0.8435464	0	item3	comp	main	0.8435464	-0.8648743	
+# 4	0.6850886	1.8747028	0	item4	comp	main	1.8747028	0.6850886	
+# 5	-1.4793505	0.8534336	0	item5	comp	main	0.8534336	-1.4793505	
+# 6	-0.3336796	1.0371741	0	item6	comp	main	1.0371741	-0.3336796	
+# 7	1.8529386	1.4060425	0	item7	comp	main	1.4060425	1.8529386	
+# 8	-0.4022468	1.4886061	0	item8	comp	main	1.4886061	-0.4022468	
+# 9	0.3655995	1.0044162	0	item9	comp	main	1.0044162	0.3655995	
+# 10	0.6513511	1.2750785	0	item10	comp	main	1.2750785	0.6513511	
 ```
 
 <!-- BEGIN: paste sim_a1 output here -->
@@ -128,10 +155,32 @@ For a 3PL item, `c` is the lower asymptote. A GPCM item is identified by finite
 data(sim_a2)
 
 dim(sim_a2$X)
+# [1] 3000   60
 dim(sim_a2$Y)
+# [1] 3000   10
 table(sim_a2$itemtype)
+#  3PL gpcm 
+#   5    5 
 head(sim_a2$Y)
+#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010
+# [1,]    1    2    1    2    1    1    1    2    1    1
+# [2,]    0    1    0    2    1    2    0    2    1    1
+# [3,]    1    0    1    2    1    1    0    0    1    2
+# [4,]    0    0    0    2    1    1    0    0    1    0
+# [5,]    1    1    1    1    1    0    0    1    1    0
+# [6,]    1    1    1    2    1    0    0    2    1    0
+
 sim_a2$parTab[, c("ItemID", "itemtype", "a", "b", "c", "b1", "b2")]
+# item1	3PL	1.0005257	-0.1280856	0.1624870	NA	NA
+# item2	gpcm	1.1258010	NA	0.0000000	-0.3738297	0.6175084
+# item3	3PL	0.8435464	0.4959430	0.2444852	NA	NA
+# item4	gpcm	1.8747028	NA	0.0000000	-1.4734702	-0.3204836
+# item5	3PL	0.8534336	-0.8648743	0.1599157	NA	NA
+# item6	gpcm	1.0371741	NA	0.0000000	0.1658423	1.0450782
+# item7	3PL	1.4060425	0.6850886	0.1887100	NA	NA
+# item8	gpcm	1.4886061	NA	0.0000000	-0.7241589	0.4505988
+# item9	3PL	1.0044162	-1.4793505	0.1994257	NA	NA
+# item10	gpcm	1.2750785	NA	0.0000000	-0.2383690	0.8670740
 ```
 
 <!-- BEGIN: paste sim_a2 output here -->
@@ -186,13 +235,28 @@ mmlcomp_emm <- with(
     parTab = parTab,
     method = "FARLR_EMM",
     main = main,
-    K_hat = 2,
     seed = 2026
   )
 )
+#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
+#  |=======================================================================| 100%
 
-mmlcomp_emm$coefficients
-mmlcomp_emm$sigma
+round(mmlcomp_emm$coefficients, 3)
+ #   FS1    FS2    FS3    FS4     X1     X2     X3     X4     X5     X6     X7 
+ # 0.360 -0.051  0.089  0.163  0.146  0.139  0.000  0.000  0.000  0.000  0.000 
+ #    X8     X9    X10    X11    X12    X13    X14    X15    X16    X17    X18 
+ # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.142  0.000  0.000  0.000 
+ #   X19    X20    X21    X22    X23    X24    X25    X26    X27    X28    X29 
+ # 0.247  0.000  0.000  0.152  0.000  0.000  0.000  0.000  0.000  0.000  0.108 
+ #   X30    X31    X32    X33    X34    X35    X36    X37    X38    X39    X40 
+ # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+ #   X41    X42    X43    X44    X45    X46    X47    X48    X49    X50    X51 
+ # 0.000  0.000  0.000  0.000  0.163  0.000  0.000  0.000  0.000  0.000  0.000 
+ #   X52    X53    X54    X55    X56    X57    X58    X59    X60 
+ # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+
+round(mmlcomp_emm$sigma, 3)
+# [1] 0.702
 ```
 
 ## FARLR Debias
@@ -212,13 +276,28 @@ mmlcomp_debias <- with(
     parTab = parTab,
     method = "FARLR_Debias",
     main = main,
-    K_hat = 2,
     seed = 2026
   )
 )
+#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
+#  |=======================================================================| 100%
 
-mmlcomp_debias$coefficients
-mmlcomp_debias$sigma
+round(mmlcomp_debias$coefficients, 3)
+ #   FS1    FS2    FS3    FS4     X1     X2     X3     X4     X5     X6     X7 
+ # 0.025 -0.665  0.020  0.047  0.147  0.125  0.000  0.000  0.000  0.000  0.000 
+ #    X8     X9    X10    X11    X12    X13    X14    X15    X16    X17    X18 
+ # 0.000  0.000  0.000  0.360  0.000  0.000  0.000  0.127  0.000  0.000  0.000 
+ #   X19    X20    X21    X22    X23    X24    X25    X26    X27    X28    X29 
+ # 0.243  0.129  0.000  0.148  0.000  0.000  0.000  0.129  0.000  0.000  0.108 
+ #   X30    X31    X32    X33    X34    X35    X36    X37    X38    X39    X40 
+ # 0.000  0.000  0.437  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+ #   X41    X42    X43    X44    X45    X46    X47    X48    X49    X50    X51 
+ # 0.523  0.000  0.000  0.000  0.157  0.000  0.000  0.000  0.000  0.000  0.000 
+ #   X52    X53    X54    X55    X56    X57    X58    X59    X60 
+ # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+
+round(mmlcomp_debias$sigma, 3)
+# [1] 0.631
 ```
 
 ## Mixed 3PL and GPCM items
@@ -236,79 +315,113 @@ mmlcomp_mixed <- with(
     parTab = parTab,
     method = "FARLR_Debias",
     main = main,
-    K_hat = 2,
     seed = 2026
   )
 )
-
-mmlcomp_mixed$coefficients
-mmlcomp_mixed$sigma
+#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
+#  |=======================================================================| 100%
+ 
+round(mmlcomp_mixed$coefficients,3)
+#  FS1    FS2    FS3    FS4     X1     X2     X3     X4     X5     X6     X7 
+# 0.025 -0.665 -0.006  0.054  0.126  0.109  0.000  0.000  0.000  0.000  0.000 
+#    X8     X9    X10    X11    X12    X13    X14    X15    X16    X17    X18 
+# 0.000  0.000  0.000  0.445  0.000  0.000  0.000  0.090  0.000  0.000  0.000 
+#   X19    X20    X21    X22    X23    X24    X25    X26    X27    X28    X29 
+# 0.250  0.134  0.000  0.149  0.000  0.000  0.000  0.152  0.000  0.000  0.133 
+#   X30    X31    X32    X33    X34    X35    X36    X37    X38    X39    X40 
+# 0.000  0.000  0.429  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+#   X41    X42    X43    X44    X45    X46    X47    X48    X49    X50    X51 
+# 0.534  0.000  0.000  0.000  0.162  0.000  0.000  0.000  0.000  0.000  0.000 
+#   X52    X53    X54    X55    X56    X57    X58    X59    X60 
+# 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
+ 
+round(mmlcomp_mixed$sigma, 3)
+# [1] 0.594
 ```
-
 # Plausible Values for FARLR
 
-`Farlr_drawPVs()` combines the fitted latent-regression prior with each
-respondent's item-response likelihood to obtain a posterior latent-trait
-distribution. The default normal method draws from a normal approximation
-based on the EAP mean and variance. The grid method samples directly from the
-discretized posterior.
+`Farlr_drawPVs()` combines the fitted FARLR latent-regression prior with each respondent's item-response likelihood. For each respondent, the function evaluates the posterior distribution over a set of quadrature points and computes the EAP estimate and posterior variance. Plausible values are then generated from the respondent-specific distribution defined by these two posterior moments.
+
+## Plausible values for `sim_a1`
+
+The following code generates 10 plausible values per respondent from the
+FARLR debiasing model fitted to `sim_a1`.
 
 ```{r farlr-pv}
 PVs_debias <- Farlr_drawPVs(
   mmlcomp = mmlcomp_debias,
-  npv = 10L,
-  draw_method = "normal",
+  npv = 8L,
   seed = 2026
 )
+# |=============================================================| 100%
 
-head(PVs_debias$datPVs)
+PVs_debias$datPVs |>
+  head() |>
+  dplyr::mutate(dplyr::across(where(is.numeric), \(x) round(x, 3)))
+# id  _farl1  _farl2  _farl3  _farl4  _farl5  _farl6  _farl7 _farl8
+# 1	1	1.584	  0.856	  1.410	  1.308	  1.044	  0.204	  1.013	  0.883
+# 2	2	-0.187	-0.446	-0.417	-0.559	-0.335	-0.336	-1.360	0.357
+# 3	3	0.032	  -0.144	-0.595	0.065	  -0.385	-0.312	-0.854	0.407
+# 4	4	-0.797	0.071	  -0.011	-0.792	-0.518	-0.014	-1.066	-0.742
+# 5	5	0.099	  0.352	  0.287	  0.710	  0.464	  -0.175	0.457	  -0.146
+# 6	6	-0.455	0.383	  -0.476	0.179	  -0.315	0.660	  0.354	  -0.129
+
 head(PVs_debias$EAP_estimates)
+# [1]  1.34700172 -0.23687530 -0.23971835 -0.81915496  0.20881138 0.04569881
 ```
 
-<!-- BEGIN: paste FARLR plausible-value output here -->
+<!-- BEGIN: paste sim_a1 plausible-value output here -->
 
 ```text
-# Paste head(PVs_debias$datPVs) and head(PVs_debias$EAP_estimates) here.
+# Paste head(PVs_debias$datPVs) here.
+# Paste head(PVs_debias$EAP_estimates) here.
 ```
 
-<!-- END: paste FARLR plausible-value output here -->
+<!-- END: paste sim_a1 plausible-value output here -->
 
-For direct grid-based posterior draws, use
-
-```{r farlr-grid-pv}
-PVs_grid <- Farlr_drawPVs(
-  mmlcomp = mmlcomp_debias,
-  npv = 10L,
-  draw_method = "grid",
-  seed = 2026
-)
-```
+The `datPVs` component contains one row per respondent, with `id` identifying
+the respondent and `_farl1`, ..., `_farl10` containing the plausible values.
+The `EAP_estimates` and `EAP_variance` components contain the posterior mean
+and variance used to generate the plausible values.
 
 ## Plausible values for `sim_a2`
 
-Plausible values for the mixed 3PL/GPCM data are drawn with the same function.
-The fitted model retains the item-specific response model supplied through
-`sim_a2$parTab`.
+The same function can be used for the mixed 3PL/GPCM responses in `sim_a2`.
+The item-specific response types and parameters stored in the fitted FARLR
+object are used automatically when evaluating each respondent's likelihood.
 
 ```{r farlr-mixed-pv}
 PVs_mixed <- Farlr_drawPVs(
   mmlcomp = mmlcomp_mixed,
-  npv = 10L,
-  draw_method = "normal",
+  npv = 8L,
   seed = 2026
 )
+# |=================================================================================================================================| 100%
 
-head(PVs_mixed$datPVs)
+PVs_mixed$datPVs |>
+  head() |>
+  dplyr::mutate(dplyr::across(where(is.numeric), \(x) round(x, 3)))
+#  id _farl1  _farl2  _farl3  _farl4  _farl5  _farl6  _farl7 _farl8
+# 1	1	1.320	  0.657	  1.162	  1.069	  0.828	  0.062	  0.800	  0.682
+# 2	2	0.369	  0.153	  0.177	  0.059	  0.246	  0.244	  -0.607	0.821
+# 3	3	0.277	  0.130	  -0.245	0.304	  -0.070	-0.010	-0.461	0.589
+# 4	4	-0.535	0.148	  0.082	  -0.532	-0.316	0.081	  -0.747	-0.492
+# 5	5	-0.267	-0.051	-0.107	0.255	  0.044	  -0.502	0.039	  -0.477
+# 6	6	-0.254	0.460	  -0.272	0.286	  -0.135	0.696	  0.435	  0.024
+
 head(PVs_mixed$EAP_estimates)
+# [1]  1.10437426  0.32693799  0.05039616 -0.55292495 -0.17377925  0.17274363
 ```
 
 <!-- BEGIN: paste sim_a2 plausible-value output here -->
 
 ```text
-# Paste head(PVs_mixed$datPVs) and head(PVs_mixed$EAP_estimates) here.
+# Paste head(PVs_mixed$datPVs) here.
+# Paste head(PVs_mixed$EAP_estimates) here.
 ```
 
 <!-- END: paste sim_a2 plausible-value output here -->
+
 
 # DIRE Marginal Maximum Likelihood
 
@@ -376,8 +489,20 @@ mmlcomp_dire <- Dire_mml(
   var_threshold = 0.90
 )
 
-mmlcomp_dire$coefficients
+round(mmlcomp_dire$coefficients,3)
+ # (Intercept)            X1            X2           X29           X15           X45           PC1           PC2           PC3 
+ #       -1.041         0.396         0.326         0.287         0.289         0.785         0.087         0.114        -0.120 
+ #          PC4           PC5           PC6           PC7           PC8           PC9          PC10          PC11          PC12 
+ #        0.145         0.235        -0.177        -0.296         0.156        -0.301        -0.016        -0.036         0.149 
+ #         PC13          PC14          PC15          PC16          PC17          PC18          PC19          PC20          PC21 
+ #       -0.095         0.254         0.110         0.011        -0.063        -0.112        -0.101         0.033        -0.088 
+ #         PC22          PC23          PC24          PC25          PC26          PC27          PC28          PC29          PC30 
+ #       -0.011         0.057         0.002        -0.032        -0.159        -0.504         0.121         0.125         0.231 
+ #         PC31          PC32          PC33 Population SD 
+ #       -0.135         0.005         0.107         0.633 
+
 mmlcomp_dire$pca_object$num_pcs
+# 33
 ```
 
 ## Draw DIRE plausible values
@@ -398,7 +523,18 @@ pv_order <- match(
 PVs_dire <- PVs_dire[pv_order, , drop = FALSE]
 rownames(PVs_dire) <- NULL
 
-head(PVs_dire)
+PVs_dire |>
+  head() |>
+  dplyr::mutate(dplyr::across(where(is.numeric), \(x) round(x, 3)))
+
+#   id  _dire1  _dire2  _dire3  _dire4  _dire5  _dire6  _dire7  _dire8
+# 1	1	  1.084	  0.996	  1.635	  1.640	  2.162	  2.149	  1.046	  1.246	
+# 2	2	  0.350	  -0.542	0.010	  -0.479	-0.131	0.538	  -0.193	0.388	
+# 3	3	  0.678	  -0.582	-0.234	-0.562	-0.345	-0.389	-0.815	0.092	
+# 4	4	  -1.138	-0.468	-1.738	0.330	  -0.119	-0.532	-1.378	-0.581	
+# 5	5	  -0.441	0.605	  0.443	  0.206	  1.238	  0.394	  0.405	  0.010	
+# 6	6	  -0.157	-0.527	-0.277	-0.599	0.083	  -0.173	-0.231	0.149	
+
 ```
 
 <!-- BEGIN: paste DIRE plausible-value output here -->
@@ -453,7 +589,6 @@ mml_test_emm <- function() {
       parTab,
       method = "FARLR_EMM",
       main = c(1, 2, 15, 29, 45),
-      K_hat = 2,
       seed = 2026
     )
   )
@@ -480,7 +615,6 @@ mml_test_mixed <- function() {
       parTab,
       method = "FARLR_Debias",
       main = c(1, 2, 15, 29, 45),
-      K_hat = 2,
       seed = 2026
     )
   )

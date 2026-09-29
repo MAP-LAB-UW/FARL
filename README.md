@@ -1,11 +1,17 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment <img src="man/figures/logo.png" align="right" height="80" alt="FARL logo" />
+# FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment
 
 <!-- badges: start -->
 
 <!-- badges: end -->
+
+<div class="farl-home-logo-wrap">
+
+<img class="farl-home-logo" src="man/figures/logo.png" width="340" alt="FARL logo" />
+
+</div>
 
 FARL implements factor-augmented regularized latent regression (FARLR)
 for large-scale assessments. FARLR addresses high-dimensional, strongly
@@ -30,6 +36,8 @@ inference.
   comparison approach for high-dimensional background variables.
 
 - `Dire_drawPVs()`: Draws plausible values from fitted DIRE models.
+
+<br clear="both" />
 
 ## Installation
 

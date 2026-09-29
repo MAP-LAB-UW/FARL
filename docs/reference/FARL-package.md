@@ -18,7 +18,7 @@ estimation while retaining interpretable background-variable effects.
 
 ## Model estimation
 
-- [`Farlr_mml`](https://yijunchenguw.github.io/FARL/reference/Farlr_mml.md)
+- [`Farlr_mml`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
   is the unified interface for fitting FARLR models. It supports two
   estimation methods:
 
@@ -31,26 +31,26 @@ estimation while retaining interpretable background-variable effects.
     and idiosyncratic components, followed by correction of LASSO
     shrinkage bias.
 
-- [`Dire_mml`](https://yijunchenguw.github.io/FARL/reference/Dire_mml.md)
+- [`Dire_mml`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md)
   fits a PCA-based DIRE latent regression model for comparison with the
   FARLR approaches.
 
 ## Plausible-value generation
 
-- [`Farlr_drawPVs`](https://yijunchenguw.github.io/FARL/reference/Farlr_drawPVs.md)
+- [`Farlr_drawPVs`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md)
   generates plausible values from the posterior latent-trait
   distributions implied by a fitted FARLR model.
 
-- [`Dire_drawPVs`](https://yijunchenguw.github.io/FARL/reference/Dire_drawPVs.md)
+- [`Dire_drawPVs`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md)
   generates plausible values from a fitted DIRE model.
 
 ## Simulation and example data
 
-- [`sim_a1`](https://yijunchenguw.github.io/FARL/reference/sim_a1.md)
+- [`sim_a1`](https://map-lab-uw.github.io/FARL/reference/sim_a1.md)
   contains simulated dichotomous 2PL responses, item parameters, and
   high-dimensional background covariates.
 
-- [`sim_a2`](https://yijunchenguw.github.io/FARL/reference/sim_a2.md)
+- [`sim_a2`](https://map-lab-uw.github.io/FARL/reference/sim_a2.md)
   contains simulated mixed 3PL and GPCM responses, item parameters, and
   high-dimensional background covariates.
 
@@ -65,9 +65,9 @@ estimators are designed for a unidimensional latent proficiency model.
 
 Useful links:
 
-- <https://yijunchenguw.github.io/FARL/>
+- <https://MAP-LAB-UW.github.io/FARL/>
 
-- <https://github.com/yijunchenguw/FARL>
+- <https://github.com/MAP-LAB-UW/FARL>
 
 ## Author
 

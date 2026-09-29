@@ -69,8 +69,8 @@ are designed for a unidimensional latent proficiency model.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://yijunchenguw.github.io/FARL/}
-  \item \url{https://github.com/yijunchenguw/FARL}
+  \item \url{https://MAP-LAB-UW.github.io/FARL/}
+  \item \url{https://github.com/MAP-LAB-UW/FARL}
 }
 
 }

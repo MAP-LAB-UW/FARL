@@ -4,4 +4,4 @@
 
 - [FARL: Use Factor-Augmented Regularized Latent Regression for
   Large-Scale
-  Assessment](https://yijunchenguw.github.io/FARL/articles/FARL.md):
+  Assessment](https://map-lab-uw.github.io/FARL/articles/FARL.md):

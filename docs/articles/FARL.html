@@ -126,7 +126,7 @@ latent regression comparison.</p>
 <td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"><span class="math inline">\checkmark</span></td>
-<td align="center">optional</td>
+<td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"></td>
 </tr>
 <tr class="even">
@@ -134,7 +134,7 @@ latent regression comparison.</p>
 <td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"><span class="math inline">\checkmark</span></td>
-<td align="center">optional</td>
+<td align="center"><span class="math inline">\checkmark</span></td>
 <td align="center"></td>
 </tr>
 <tr class="odd">
@@ -160,7 +160,15 @@ are coded as 0 or 1, and missing responses may be coded as
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># [1] 3000   10</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co">#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010</span></span>
+<span><span class="co"># [1,]    1    1    1    1    1    1    0    1    1    1</span></span>
+<span><span class="co"># [2,]    0    0    1    0    1    0    0    1    1    0</span></span>
+<span><span class="co"># [3,]    1    1    1    0    0    0    0    0    1    0</span></span>
+<span><span class="co"># [4,]    0    0    1    0    1    0    0    0    0    0</span></span>
+<span><span class="co"># [5,]    1    0    1    0    1    1    0    1    0    0</span></span>
+<span><span class="co"># [6,]    0    0    1    0    1    1    0    1    1    0</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="background-covariates">Background covariates<a class="anchor" aria-label="anchor" href="#background-covariates"></a>
@@ -170,7 +178,15 @@ by <span class="math inline">P</span> numeric matrix. Covariates may be
 binary or continuous, but each column must have positive variance.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># [1] 3000   60</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#      [,1] [,2]       [,3] [,4] [,5] [,6] [,7]       [,8] [,9]      [,10]</span></span>
+<span><span class="co"># [1,]    1    1  2.0679032    1    1    1    1  1.3037993    1 1.09682610</span></span>
+<span><span class="co"># [2,]    1    0  0.1913680    0    1    1    0  0.2450981    1 0.63345311</span></span>
+<span><span class="co"># [3,]    1    1  0.9718647    1    1    1    1  0.1302181    0 0.36494637</span></span>
+<span><span class="co"># [4,]    0    0 -0.4845058    1    0    0    0  0.1197165    0 0.21706507</span></span>
+<span><span class="co"># [5,]    1    1  0.8427349    1    1    1    0  0.1999399    1 0.47819559</span></span>
+<span><span class="co"># [6,]    0    1  0.2229768    1    1    1    1 -0.4628130    1 0.04376757</span></span></code></pre></div>
 <p>The <code>main</code> argument contains the column indices of primary
 covariates. These variables are not penalized in the regularized
 regression. In this example, the five main covariates are</p>
@@ -185,7 +201,18 @@ columns of the response matrix. For a 2PL item, <code>a</code> is the
 discrimination, <code>b</code> is the difficulty, and <code>c</code> is
 zero.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sim_a1</span><span class="op">$</span><span class="va">parTab</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">sim_a1</span><span class="op">$</span><span class="va">parTab</span></span>
+<span></span>
+<span><span class="co"># 1 -0.1280856  1.0005257   0   item1   comp    main    1.0005257   -0.1280856  </span></span>
+<span><span class="co"># 2 0.4959430   1.1258010   0   item2   comp    main    1.1258010   0.4959430   </span></span>
+<span><span class="co"># 3 -0.8648743  0.8435464   0   item3   comp    main    0.8435464   -0.8648743  </span></span>
+<span><span class="co"># 4 0.6850886   1.8747028   0   item4   comp    main    1.8747028   0.6850886   </span></span>
+<span><span class="co"># 5 -1.4793505  0.8534336   0   item5   comp    main    0.8534336   -1.4793505  </span></span>
+<span><span class="co"># 6 -0.3336796  1.0371741   0   item6   comp    main    1.0371741   -0.3336796  </span></span>
+<span><span class="co"># 7 1.8529386   1.4060425   0   item7   comp    main    1.4060425   1.8529386   </span></span>
+<span><span class="co"># 8 -0.4022468  1.4886061   0   item8   comp    main    1.4886061   -0.4022468  </span></span>
+<span><span class="co"># 9 0.3655995   1.0044162   0   item9   comp    main    1.0044162   0.3655995   </span></span>
+<span><span class="co"># 10    0.6513511   1.2750785   0   item10  comp    main    1.2750785   0.6513511   </span></span></code></pre></div>
 <!-- BEGIN: paste sim_a1 output here -->
 <pre class="text"><code><span><span class="co"># Paste the printed sim_a1 dimensions, response rows, covariate rows,</span></span>
 <span><span class="co"># and parameter table here.</span></span></code></pre>
@@ -203,10 +230,32 @@ asymptote. A GPCM item is identified by finite <code>b1</code> and
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   60</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   10</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">itemtype</span><span class="op">)</span></span>
+<span><span class="co">#  3PL gpcm </span></span>
+<span><span class="co">#   5    5 </span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
-<span><span class="va">sim_a2</span><span class="op">$</span><span class="va">parTab</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ItemID"</span>, <span class="st">"itemtype"</span>, <span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"b1"</span>, <span class="st">"b2"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<span><span class="co">#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010</span></span>
+<span><span class="co"># [1,]    1    2    1    2    1    1    1    2    1    1</span></span>
+<span><span class="co"># [2,]    0    1    0    2    1    2    0    2    1    1</span></span>
+<span><span class="co"># [3,]    1    0    1    2    1    1    0    0    1    2</span></span>
+<span><span class="co"># [4,]    0    0    0    2    1    1    0    0    1    0</span></span>
+<span><span class="co"># [5,]    1    1    1    1    1    0    0    1    1    0</span></span>
+<span><span class="co"># [6,]    1    1    1    2    1    0    0    2    1    0</span></span>
+<span></span>
+<span><span class="va">sim_a2</span><span class="op">$</span><span class="va">parTab</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ItemID"</span>, <span class="st">"itemtype"</span>, <span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"b1"</span>, <span class="st">"b2"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co"># item1 3PL 1.0005257   -0.1280856  0.1624870   NA  NA</span></span>
+<span><span class="co"># item2 gpcm    1.1258010   NA  0.0000000   -0.3738297  0.6175084</span></span>
+<span><span class="co"># item3 3PL 0.8435464   0.4959430   0.2444852   NA  NA</span></span>
+<span><span class="co"># item4 gpcm    1.8747028   NA  0.0000000   -1.4734702  -0.3204836</span></span>
+<span><span class="co"># item5 3PL 0.8534336   -0.8648743  0.1599157   NA  NA</span></span>
+<span><span class="co"># item6 gpcm    1.0371741   NA  0.0000000   0.1658423   1.0450782</span></span>
+<span><span class="co"># item7 3PL 1.4060425   0.6850886   0.1887100   NA  NA</span></span>
+<span><span class="co"># item8 gpcm    1.4886061   NA  0.0000000   -0.7241589  0.4505988</span></span>
+<span><span class="co"># item9 3PL 1.0044162   -1.4793505  0.1994257   NA  NA</span></span>
+<span><span class="co"># item10    gpcm    1.2750785   NA  0.0000000   -0.2383690  0.8670740</span></span></code></pre></div>
 <!-- BEGIN: paste sim_a2 output here -->
 <pre class="text"><code><span><span class="co"># Paste the sim_a2 item-type table and mixed-item parameter table here.</span></span></code></pre>
 <!-- END: paste sim_a2 output here -->
@@ -303,7 +352,7 @@ M-step refines the active coefficients.</p>
 <span>    parTab <span class="op">=</span> <span class="va">parTab</span>,</span>
 <span>    method <span class="op">=</span> <span class="st">"FARLR_EMM"</span>,</span>
 <span>    main <span class="op">=</span> <span class="va">main</span>,</span>
-<span>    K_hat <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>    K_hat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>    seed <span class="op">=</span> <span class="fl">2026</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>

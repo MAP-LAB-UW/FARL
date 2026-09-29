@@ -30,13 +30,13 @@ torch::install_torch()
 library(FARL)
 ```
 
-[`Farlr_mml()`](https://yijunchenguw.github.io/FARL/reference/Farlr_mml.md)
+[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
 is the public interface for both FARLR estimators. The option
 `method = "FARLR_EMM"` implements FARLR through an
 importance-sampling-based expectation-maximization-maximization
 algorithm, whereas `method = "FARLR_Debias"` applies a bias correction
 to the regularized coefficients.
-[`Dire_mml()`](https://yijunchenguw.github.io/FARL/reference/Dire_mml.md)
+[`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md)
 provides a PCA-based latent regression comparison.
 
 ## Data Input
@@ -45,9 +45,9 @@ Data required for the analyses are summarized below.
 
 | Analysis | Item Responses | Item Parameters | Background Covariates | Main Covariates | Formula |
 |:--:|:--:|:--:|:--:|:--:|:--:|
-| `Farlr_mml(..., method = "FARLR_EMM")` | \checkmark | \checkmark | \checkmark | optional |  |
-| `Farlr_mml(..., method = "FARLR_Debias")` | \checkmark | \checkmark | \checkmark | optional |  |
-| [`Dire_mml()`](https://yijunchenguw.github.io/FARL/reference/Dire_mml.md) | \checkmark | \checkmark | \checkmark | \checkmark | \checkmark |
+| `Farlr_mml(..., method = "FARLR_EMM")` | \checkmark | \checkmark | \checkmark | \checkmark |  |
+| `Farlr_mml(..., method = "FARLR_Debias")` | \checkmark | \checkmark | \checkmark | \checkmark |  |
+| [`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md) | \checkmark | \checkmark | \checkmark | \checkmark | \checkmark |
 
 Here we first use `sim_a1`, a simulated dataset for one-dimensional 2PL
 analysis. It contains N=3000 respondents, J=10 items, and P=60
@@ -62,7 +62,15 @@ are coded as 0 or 1, and missing responses may be coded as `NA`.
 data(sim_a1)
 
 dim(sim_a1$Y)
+# [1] 3000   10
 head(sim_a1$Y)
+#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010
+# [1,]    1    1    1    1    1    1    0    1    1    1
+# [2,]    0    0    1    0    1    0    0    1    1    0
+# [3,]    1    1    1    0    0    0    0    0    1    0
+# [4,]    0    0    1    0    1    0    0    0    0    0
+# [5,]    1    0    1    0    1    1    0    1    0    0
+# [6,]    0    0    1    0    1    1    0    1    1    0
 ```
 
 ### Background covariates
@@ -72,7 +80,15 @@ be binary or continuous, but each column must have positive variance.
 
 ``` r
 dim(sim_a1$X)
+# [1] 3000   60
 head(sim_a1$X[, 1:10])
+#      [,1] [,2]       [,3] [,4] [,5] [,6] [,7]       [,8] [,9]      [,10]
+# [1,]    1    1  2.0679032    1    1    1    1  1.3037993    1 1.09682610
+# [2,]    1    0  0.1913680    0    1    1    0  0.2450981    1 0.63345311
+# [3,]    1    1  0.9718647    1    1    1    1  0.1302181    0 0.36494637
+# [4,]    0    0 -0.4845058    1    0    0    0  0.1197165    0 0.21706507
+# [5,]    1    1  0.8427349    1    1    1    0  0.1999399    1 0.47819559
+# [6,]    0    1  0.2229768    1    1    1    1 -0.4628130    1 0.04376757
 ```
 
 The `main` argument contains the column indices of primary covariates.
@@ -91,6 +107,17 @@ is the difficulty, and `c` is zero.
 
 ``` r
 sim_a1$parTab
+
+# 1 -0.1280856  1.0005257   0   item1   comp    main    1.0005257   -0.1280856  
+# 2 0.4959430   1.1258010   0   item2   comp    main    1.1258010   0.4959430   
+# 3 -0.8648743  0.8435464   0   item3   comp    main    0.8435464   -0.8648743  
+# 4 0.6850886   1.8747028   0   item4   comp    main    1.8747028   0.6850886   
+# 5 -1.4793505  0.8534336   0   item5   comp    main    0.8534336   -1.4793505  
+# 6 -0.3336796  1.0371741   0   item6   comp    main    1.0371741   -0.3336796  
+# 7 1.8529386   1.4060425   0   item7   comp    main    1.4060425   1.8529386   
+# 8 -0.4022468  1.4886061   0   item8   comp    main    1.4886061   -0.4022468  
+# 9 0.3655995   1.0044162   0   item9   comp    main    1.0044162   0.3655995   
+# 10    0.6513511   1.2750785   0   item10  comp    main    1.2750785   0.6513511   
 ```
 
 ``` text
@@ -108,10 +135,32 @@ identified by finite `b1` and `b2` step parameters.
 data(sim_a2)
 
 dim(sim_a2$X)
+# [1] 3000   60
 dim(sim_a2$Y)
+# [1] 3000   10
 table(sim_a2$itemtype)
+#  3PL gpcm 
+#   5    5 
 head(sim_a2$Y)
+#      i001 i002 i003 i004 i005 i006 i007 i008 i009 i010
+# [1,]    1    2    1    2    1    1    1    2    1    1
+# [2,]    0    1    0    2    1    2    0    2    1    1
+# [3,]    1    0    1    2    1    1    0    0    1    2
+# [4,]    0    0    0    2    1    1    0    0    1    0
+# [5,]    1    1    1    1    1    0    0    1    1    0
+# [6,]    1    1    1    2    1    0    0    2    1    0
+
 sim_a2$parTab[, c("ItemID", "itemtype", "a", "b", "c", "b1", "b2")]
+# item1 3PL 1.0005257   -0.1280856  0.1624870   NA  NA
+# item2 gpcm    1.1258010   NA  0.0000000   -0.3738297  0.6175084
+# item3 3PL 0.8435464   0.4959430   0.2444852   NA  NA
+# item4 gpcm    1.8747028   NA  0.0000000   -1.4734702  -0.3204836
+# item5 3PL 0.8534336   -0.8648743  0.1599157   NA  NA
+# item6 gpcm    1.0371741   NA  0.0000000   0.1658423   1.0450782
+# item7 3PL 1.4060425   0.6850886   0.1887100   NA  NA
+# item8 gpcm    1.4886061   NA  0.0000000   -0.7241589  0.4505988
+# item9 3PL 1.0044162   -1.4793505  0.1994257   NA  NA
+# item10    gpcm    1.2750785   NA  0.0000000   -0.2383690  0.8670740
 ```
 
 ``` text
@@ -125,14 +174,14 @@ objects.
 
 | Function | Main output |
 |:--:|:---|
-| [`Farlr_mml()`](https://yijunchenguw.github.io/FARL/reference/Farlr_mml.md) | Regression coefficients, residual standard deviation, selected tuning parameter, factor scores, and method-specific design matrices |
-| [`Farlr_drawPVs()`](https://yijunchenguw.github.io/FARL/reference/Farlr_drawPVs.md) | Plausible values, EAP estimates, posterior variances, posterior modes, and prior means |
-| [`Dire_mml()`](https://yijunchenguw.github.io/FARL/reference/Dire_mml.md) | A fitted `mmlMeans` object with DIRE coefficients and the residual-PCA object |
-| [`Dire_drawPVs()`](https://yijunchenguw.github.io/FARL/reference/Dire_drawPVs.md) | A data frame containing respondent IDs and plausible values |
+| [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md) | Regression coefficients, residual standard deviation, selected tuning parameter, factor scores, and method-specific design matrices |
+| [`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md) | Plausible values, EAP estimates, posterior variances, posterior modes, and prior means |
+| [`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md) | A fitted `mmlMeans` object with DIRE coefficients and the residual-PCA object |
+| [`Dire_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md) | A data frame containing respondent IDs and plausible values |
 
 ## Factor-Augmented Regularized Latent Regression
 
-[`Farlr_mml()`](https://yijunchenguw.github.io/FARL/reference/Farlr_mml.md)
+[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
 is the unified interface for the two FARLR estimators. In both methods,
 estimated factors capture shared dependence among covariates, while
 regularization identifies a sparse set of relevant idiosyncratic
@@ -165,7 +214,7 @@ mmlcomp_emm <- with(
     parTab = parTab,
     method = "FARLR_EMM",
     main = main,
-    K_hat = 2,
+    K_hat = NULL,
     seed = 2026
   )
 )
@@ -203,7 +252,7 @@ mmlcomp_debias$sigma
 ### Mixed 3PL and GPCM items
 
 The same interface can analyze the mixed-format responses in `sim_a2`.
-[`Farlr_mml()`](https://yijunchenguw.github.io/FARL/reference/Farlr_mml.md)
+[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
 determines item types from `parTab`: finite `b1` and `b2` identify GPCM
 items, and a nonzero `c` identifies 3PL items.
 
@@ -227,7 +276,7 @@ mmlcomp_mixed$sigma
 
 ## Plausible Values for FARLR
 
-[`Farlr_drawPVs()`](https://yijunchenguw.github.io/FARL/reference/Farlr_drawPVs.md)
+[`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md)
 combines the fitted latent-regression prior with each respondent’s
 item-response likelihood to obtain a posterior latent-trait
 distribution. The default normal method draws from a normal
@@ -288,7 +337,7 @@ head(PVs_mixed$EAP_estimates)
 The PCA-based latent regression commonly used in large-scale assessments
 reduces high-dimensional background variables to a selected set of
 principal components. In FARL,
-[`Dire_mml()`](https://yijunchenguw.github.io/FARL/reference/Dire_mml.md)
+[`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md)
 implements this comparison through the DIRE package. It can apply PCA to
 the original covariates or to non-main covariates after residualizing
 them on the key predictors, then adds the retained PC scores to the

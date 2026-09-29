@@ -2,7 +2,7 @@ library(MASS)
 library(dplyr)
 set.seed(3)
 n=3000; rho = 1; sigma_e=1; scaling <- 10; K = 2; p = 60; percent = 20; v1 = 0.5; v2 = 1# for 10:1
-J <- 15
+J <- 10
 Sigma <-diag(K)
 Sigma[Sigma == 0] <- runif(K*K - K, -0.2,0.2)
 F <- mvrnorm(n = n, rep(0,K), Sigma)

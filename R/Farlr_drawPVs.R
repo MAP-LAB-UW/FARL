@@ -74,15 +74,12 @@ Farlr_drawPVs <- function(
     theta_range = base::c(-4, 4),
     adaptive_range = FALSE,
     range_sd = 4,
-    draw_method = base::c("normal", "grid"),
     design_matrix = NULL,
     seed = NULL,
     verbose = TRUE,
     progress = TRUE,
     return_details = TRUE
 ) {
-  draw_method <- match.arg(draw_method)
-
   if (!is.null(seed)) {
     set.seed(seed)
   }
@@ -474,20 +471,14 @@ Farlr_drawPVs <- function(
     eap_variance[i] <- max(eap_variance[i], 0)
     posterior_mode[i] <- theta_grid[which.max(posterior_probability)]
 
-    if (draw_method == "normal") {
-      plausible_values[i, ] <- rnorm(
-        npv,
-        mean = eap_mean[i],
-        sd = sqrt(eap_variance[i])
-      )
-    } else {
-      plausible_values[i, ] <- sample(
-        theta_grid,
-        size = npv,
-        replace = TRUE,
-        prob = posterior_probability
-      )
-    }
+    # Follow the manual PV procedure: approximate the subject-specific
+    # posterior by its EAP mean and variance, then draw the PVs from that
+    # subject-specific distribution.
+    plausible_values[i, ] <- stats::rnorm(
+      npv,
+      mean = eap_mean[i],
+      sd = sqrt(eap_variance[i])
+    )
 
     if (inherits(progress_bar, "txtProgressBar")) {
       utils::setTxtProgressBar(progress_bar, i)
@@ -535,7 +526,6 @@ Farlr_drawPVs <- function(
       posterior_mode = posterior_mode,
       prior_mean = prior_mean,
       sigma = sigma,
-      draw_method = draw_method,
       mean_difference = mean_difference
     ))
   }
@@ -543,6 +533,6 @@ Farlr_drawPVs <- function(
   attr(datPVs, "EAP") <- eap_mean
   attr(datPVs, "EAP_variance") <- eap_variance
   attr(datPVs, "posterior_mode") <- posterior_mode
-  attr(datPVs, "draw_method") <- draw_method
   datPVs
 }
+

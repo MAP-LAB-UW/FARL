@@ -11,7 +11,7 @@ p <- 60
 percent <- 20
 v1 <- 0.5
 v2 <- 1 # for 10:1
-J <- 15
+J <- 10
 
 Sigma <- diag(K)
 Sigma[Sigma == 0] <- runif(K * K - K, -0.2, 0.2)

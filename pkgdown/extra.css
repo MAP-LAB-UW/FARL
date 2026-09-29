@@ -1,12 +1,48 @@
-/* Use one consistent logo size on all pkgdown pages. */
-img[src*="logo.png"] {
-  height: 120px !important;
-  width: auto !important;
-  max-height: 120px !important;
+/* Hide pkgdown's automatic logo beside page titles on every page. */
+.page-header > img.logo {
+  display: none !important;
+}
+
+/* Large logo on the FARL home page only. The white wrapper masks the right
+   side of the title rule, while the negative margin lifts the logo slightly
+   above that rule. */
+.farl-home-logo-wrap {
+  float: right;
+  position: relative;
+  z-index: 2;
+  width: 340px;
+  max-width: 38%;
+  margin: calc(-1.25rem - 20px) 0 1.5rem 2rem;
+  padding-left: 1.25rem;
+  background: var(--bs-body-bg, #fff);
+}
+
+.farl-home-logo-wrap img.farl-home-logo {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
   object-fit: contain;
 }
 
-.navbar-brand {
-  padding-top: 0;
-  padding-bottom: 0;
+@media (min-width: 769px) and (max-width: 991.98px) {
+  .farl-home-logo-wrap {
+    width: 280px;
+    max-width: 35%;
+    margin-top: calc(-0.75rem - 20px);
+    margin-left: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .farl-home-logo-wrap {
+    float: none;
+    display: block;
+    width: 220px;
+    max-width: 70%;
+    position: static;
+    padding-left: 0;
+    background: transparent;
+    margin: 1rem auto 1.5rem;
+  }
 }

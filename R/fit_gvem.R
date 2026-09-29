@@ -379,7 +379,8 @@ Farlr_mml <- function(
     )
   )
 
-  colnames(Uupdate) <- paste0("U", seq_len(K_hat))
+  factor_score_names <- paste0("FS", seq_len(K_hat))
+  colnames(Uupdate) <- factor_score_names
   Z <- cbind(Uupdate, X)
 
   # ---------------------------------------------------------------------------
@@ -439,7 +440,9 @@ Farlr_mml <- function(
   } else {
     hatB <- crossprod(Uupdate, X) / N
     hatU <- X - Uupdate %*% hatB
+    colnames(hatU) <- colnames(X)
     Fan <- cbind(Uupdate, hatU)
+    colnames(Fan) <- base::c(factor_score_names, colnames(X))
     design_base <- Fan
     target_function_name <- "farlr_debias"
   }
@@ -509,6 +512,49 @@ Farlr_mml <- function(
   )
 
   # ---------------------------------------------------------------------------
+  # Standardize the coefficient output for both fitting methods
+  # ---------------------------------------------------------------------------
+  coefficient_names <- base::c(
+    factor_score_names,
+    colnames(X)
+  )
+
+  coefficients <- as.numeric(result$coefficients)
+
+  if (length(coefficients) != length(coefficient_names)) {
+    stop(
+      target_function_name, "() returned ", length(coefficients),
+      " coefficients, but ", length(coefficient_names),
+      " were expected.",
+      call. = FALSE
+    )
+  }
+
+  names(coefficients) <- coefficient_names
+  result$coefficients <- coefficients
+
+  # farlr_debias() historically returned both $coefficients and $coef.
+  # Keep one consistently named coefficient component for both methods.
+  result$coef <- NULL
+
+  if (is.list(result$all_results)) {
+    result$all_results <- lapply(
+      result$all_results,
+      function(candidate) {
+        if (!is.null(candidate$coefficients)) {
+          candidate_coefficients <- as.numeric(candidate$coefficients)
+          if (length(candidate_coefficients) == length(coefficient_names)) {
+            names(candidate_coefficients) <- coefficient_names
+            candidate$coefficients <- candidate_coefficients
+          }
+        }
+        candidate$coef <- NULL
+        candidate
+      }
+    )
+  }
+
+  # ---------------------------------------------------------------------------
   # Long-format and subject-level outputs
   # ---------------------------------------------------------------------------
   subject <- factor(seq_len(N))
@@ -534,7 +580,6 @@ Farlr_mml <- function(
   result$item_params <- parTab
   result$item_type <- type
   result$factor_scores <- Uupdate
-  result$fit_score <- Uupdate
   result$hatB <- hatB
   result$hatU <- hatU
   result$Fan <- Fan
@@ -545,6 +590,7 @@ Farlr_mml <- function(
 
   invisible(result)
 }
+
 
 
 mml_test_1 <- function(){
