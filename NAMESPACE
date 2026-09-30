@@ -1,11 +1,12 @@
 export(Farlr_mml)
 export(Farlr_drawPVs)
-export(MFarlr_mml)
-export(MFarlr_drawPVs)
 export(Dire_mml)
 export(Dire_drawPVs)
-export(MDire_mml)
-export(MDire_drawPVs)
+
+export(MFARLR_mml)
+export(MFARLR_drawPVs)
+export(MDIRE_mml)
+export(MDIRE_drawPVs)
 
 import(MASS)
 import(Matrix)
