@@ -41,3 +41,7 @@ Depends:
 URL: https://MAP-LAB-UW.github.io/FARL/, https://github.com/MAP-LAB-UW/FARL
 LazyData: true
 RoxygenNote: 7.3.3
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

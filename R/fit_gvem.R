@@ -571,20 +571,15 @@ Farlr_mml <- function(
     check.names = FALSE
   )
 
-  result$stuDat <- subject_design
-  result$stuItems <- stuItems
-  result$X_original <- X_original
+  result$response <- Y
   result$X <- X
   result$X_center <- X_center
   result$X_scale <- X_scale
   result$item_params <- parTab
   result$item_type <- type
   result$factor_scores <- Uupdate
-  result$hatB <- hatB
   result$hatU <- hatU
-  result$Fan <- Fan
   result$K_hat <- K_hat
-  result$parallel_analysis <- parallel_result
   result$method <- method
   result$call <- match.call()
 

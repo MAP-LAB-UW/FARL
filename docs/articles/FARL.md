@@ -1,73 +1,60 @@
-# FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment
+# FARL: An Applied Guide for Unidimensional Assessments
 
-## Introduction
+## Overview
 
-The `FARL` package implements factor-augmented regularized latent
-regression (FARLR) for large-scale assessments. FARLR addresses
-high-dimensional, strongly dependent background variables by decomposing
-their variation into common latent factors and idiosyncratic components.
-The common factors enter the latent regression, while sparse
-regularization selects a parsimonious set of relevant idiosyncratic
-covariates.
+The `FARL` package fits factor-augmented regularized latent regression
+models for unidimensional assessments. It is designed for applications
+with many correlated background variables. The common variation in those
+variables is summarized by factor scores, while regularization
+identifies additional covariates that are useful for predicting the
+latent trait.
 
-For multidimensional assessments, MFARLR extends this structure to
-several correlated latent traits. It estimates the regression
-coefficients and the full residual covariance jointly, avoiding separate
-pairwise covariance fits and preserving dependence among dimensions when
-plausible values are generated for group-level analyses.
+The applied workflow has two main steps:
 
-The package supports:
+1.  fit the population model with
+    [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md);
+    and
+2.  generate plausible values with
+    [`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md).
 
-- unidimensional FARLR estimation through
-  [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md);
-- unidimensional PCA-based DIRE estimation through
-  [`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md);
-- multidimensional FARLR-GVEM estimation through
-  [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md);
-- multidimensional DIRE estimation through
-  [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md);
-  and
-- plausible-value generation for all fitted models.
+Two estimation methods are available.
 
-The development version can be installed with
+| Method | When to use it |
+|:---|:---|
+| `FARLR_EMM` | Use when the goal is a sparse model estimated through the iterative regularized procedure. |
+| `FARLR_Debias` | Use when the goal is variable selection followed by a correction of regularization shrinkage. This is a useful default for reporting coefficient estimates. |
 
-``` r
-if (!requireNamespace("devtools", quietly = TRUE)) {
-  install.packages("devtools")
-}
+The examples below focus on data preparation, function calls, output
+interpretation, and plausible-value analysis rather than algorithmic
+details.
 
-devtools::install_github(
-  "MAP-LAB-UW/FARL",
-  build_vignettes = TRUE
-)
-
-torch::install_torch()
-```
+## Load FARL
 
 ``` r
 library(FARL)
 ```
 
-## Data Input
+## Prepare the data
 
-The public fitting interfaces use the following inputs.
+[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
+uses three required data objects.
 
-| Function | Covariates | Responses | Item parameters | Main covariates |
-|:---|:--:|:--:|:--:|:--:|
-| [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md) | `X` | `Y` | `parTab` | `main` |
-| [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md) | `X` | `Y` | `parTab` | `farlr_args$main` |
-| [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md) | `X` | `Y` | `parTab` | `main` |
+| Object | Required organization | Purpose |
+|:---|:---|:---|
+| `X` | Respondents by covariates | Background variables used in the population model. All columns must be numeric, finite, and have nonzero variance. |
+| `Y` | Respondents by items | Item responses. Rows must correspond exactly to the rows of `X`. Missing responses may be coded `NA`. |
+| `parTab` | One row per item | Fixed item parameters. Its row order must match the column order of `Y`. |
 
-The low-level unidimensional
-[`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md)
-interface additionally uses the DIRE person, item, parameter,
-test-scale, and formula objects demonstrated below.
+The package supports binary 1PL, 2PL, and 3PL items, as well as
+three-category GPCM items. Binary responses must be coded 0/1, and GPCM
+responses must be coded 0/1/2. The package determines item type from the
+supplied item parameters.
 
-### One-dimensional 2PL data: `sim_a1`
+### Example data
 
-`sim_a1` contains 300 respondents, 100 background covariates, and six
-dichotomous 2PL items. The true latent trait is retained for evaluating
-the simulation results.
+`sim_a1` contains 300 respondents, 100 background variables, and six
+binary 2PL items. The true latent trait is retained only for simulation
+diagnostics.
 
 ``` r
 data(sim_a1)
@@ -78,131 +65,74 @@ dim(sim_a1$X)
 dim(sim_a1$Y)
 # [1] 300   6
 
-length(sim_a1$theta)
-# [1] 300
-
-main = c(1,2,15,29,45)
-main
-# [1]  1  2 15 29 45
-
 head(sim_a1$Y)
-#      i001 i002 i003 i004 i005 i006
-# [1,]    1    1    0    0    0    1
-# [2,]    0    1    0    1    0    0
-# [3,]    1    0    1    0    0    1
-# [4,]    0    0    0    0    1    1
-# [5,]    0    0    0    0    0    1
-# [6,]    0    0    0    0    1    1
-head(sim_a1$X[, 1:10])
-#      [,1] [,2] [,3] [,4] [,5]       [,6] [,7] [,8] [,9]      [,10]
-# [1,]    0    1    0    1    0  0.2837093    0    0    1  0.3312277
-# [2,]    1    1    1    1    1  0.9718186    1    1    1  0.5673807
-# [3,]    1    1    1    1    1  1.2179341    1    1    1  0.7949050
-# [4,]    1    1    1    1    1  1.7088599    1    1    1  0.5452621
-# [5,]    0    0    0    0    0 -3.5649492    0    0    0 -1.1853080
-# [6,]    1    1    1    1    1  1.2663585    1    1    1  0.2501640
+head(sim_a1$X[, 1:6])
 sim_a1$parTab
-# item b          a       c ItemID test subtest slop    difficulty guessing
-# 1 0.68394525  0.7808753   0   item1   comp    main    0.7808753   0.68394525  0   
-# 2 0.92141771  1.0839744   0   item2   comp    main    1.0839744   0.92141771  0   
-# 3 1.57513353  0.6168007   0   item3   comp    main    0.6168007   1.57513353  0   
-# 4 1.63897827  1.1808368   0   item4   comp    main    1.1808368   1.63897827  0   
-# 5 0.06180150  0.8086742   0   item5   comp    main    0.8086742   0.06180150  0   
-# 6 0.02206284  1.0941187   0   item6   comp    main    1.0941187   0.02206284  0   
 ```
 
-Rows of `X` and `Y` must refer to the same respondents. Rows of `parTab`
-must follow the item-column order in `Y`. For a 2PL item, `a` is
-discrimination, `b` is difficulty, `d = -a * b` is the intercept used by
-`mirt`, and `c = 0`.
-
-### Mixed 3PL/GPCM data: `sim_a2`
-
-`sim_a2` uses the same 300 respondents and 100 covariates, with six
-items: three 3PL items and three three-category GPCM items.
+Before fitting the model, verify row alignment, item alignment, response
+codes, and missingness.
 
 ``` r
-data(sim_a2)
+stopifnot(nrow(sim_a1$X) == nrow(sim_a1$Y))
+stopifnot(nrow(sim_a1$parTab) == ncol(sim_a1$Y))
 
-dim(sim_a2$X)
-# [1] 300 100
+mean(is.na(sim_a1$Y))
+table(sim_a1$Y, useNA = "ifany")
 
-dim(sim_a2$Y)
-# [1] 300   6
-
-table(sim_a2$itemtype)
-#  3PL gpcm
-#    3    3
-
-sim_a2$parTab[, c(
-  "ItemID", "itemtype", "a", "b", "c", "b1", "b2"
-)]
-# ItemID itemtype a     b         c       b1  b2
-# item1 3PL 0.7808753   0.6839453   0.2364617   NA  NA
-# item2 gpcm    1.0839744   NA  0.0000000   0.4103240   1.2342899
-# item3 3PL 0.6168007   0.9214177   0.1773176   NA  NA
-# item4 gpcm    1.1808368   NA  0.0000000   -1.1282366  -0.0933918
-# item5 3PL 0.8086742   1.5751335   0.1758274   NA  NA
-# item6 gpcm    1.0941187   NA  0.0000000   -0.1558467  0.768091
+apply(sim_a1$X, 2, sd) |>
+  summary()
 ```
 
-A nonzero `c` identifies a 3PL item. Finite `b1` and `b2` values
-identify a three-category GPCM item.
+### Choose primary covariates
 
-## Unidimensional FARLR
+The `main` argument identifies covariates that must remain in the
+population model. These variables are not removed by penalized
+selection. Supply their column indices in `X`.
 
-[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
-provides a common interface for two estimators.
+``` r
+main <- c(1, 2, 15, 29, 45)
 
-| Method | Description |
+main_names <- if (is.null(colnames(sim_a1$X))) {
+  paste0("X", main)
+} else {
+  colnames(sim_a1$X)[main]
+}
+
+main_names
+```
+
+Use `main = integer(0)` when every original covariate may be selected or
+excluded by regularization.
+
+## Fit FARL
+
+### Main fitting arguments
+
+| Argument | Applied meaning |
 |:---|:---|
-| `FARLR_EMM` | Importance-sampling E-step, regularized selection update, and an unpenalized update for active coefficients |
-| `FARLR_Debias` | Regularized estimation followed by correction of shrinkage bias |
+| `X`, `Y`, `parTab` | Data objects described above. |
+| `method` | Selects `"FARLR_EMM"` or `"FARLR_Debias"`. |
+| `main` | Column indices of primary covariates that remain in the model. |
+| `lambda` | Candidate regularization values. A wider grid is useful when the selected value falls at an endpoint. |
+| `n_sam` | Monte Carlo sample size used during fitting. Larger values reduce simulation noise but increase runtime. |
+| `n_sam_final` | Monte Carlo sample size used in the final evaluation or debiased update. |
+| `K_hat` | Optional number of common factors. When omitted, FARL estimates it using parallel analysis. |
+| `delta.criteria` | Convergence tolerance for iterative updates. |
+| `iter.max` | Maximum number of iterations for each candidate regularization value. |
+| `window.size` | Number of recent updates used for stabilization. |
+| `proposal_inflation` | Controls the spread of the latent-trait proposal distribution used during Monte Carlo integration. |
+| `seed` | Makes factor selection and Monte Carlo calculations reproducible. |
+| `progress`, `verbose` | Control progress bars and printed fitting information. |
 
-The main covariates are supplied as column indices through `main`. These
-variables remain in the population model and are not removed by
-penalized selection.
+The defaults provide a convenient starting point. For a final analysis,
+inspect convergence and check whether results remain stable with larger
+Monte Carlo sample sizes and a broader `lambda` grid.
 
-### FARLR-EMM
-
-``` r
-mmlcomp_emm <- with(
-  sim_a1,
-  Farlr_mml(
-    X = X,
-    Y = Y,
-    parTab = parTab,
-    method = "FARLR_EMM",
-    main = main,
-    seed = 2026
-  )
-)
-# |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# |=====================================================================================================| 100%
-round(mmlcomp_emm$coefficients, 3)
- #   FS1    FS2     X1     X2     X3     X4     X5     X6     X7     X8     X9    X10    X11    X12    X13 
- # 0.157  0.518 -0.022  0.078  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X14    X15    X16    X17    X18    X19    X20    X21    X22    X23    X24    X25    X26    X27    X28 
- # 0.000 -0.177  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X29    X30    X31    X32    X33    X34    X35    X36    X37    X38    X39    X40    X41    X42    X43 
- # 0.106  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X44    X45    X46    X47    X48    X49    X50    X51    X52    X53    X54    X55    X56    X57    X58 
- # 0.000  0.011  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X59    X60    X61    X62    X63    X64    X65    X66    X67    X68    X69    X70    X71    X72    X73 
- # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X74    X75    X76    X77    X78    X79    X80    X81    X82    X83    X84    X85    X86    X87    X88 
- # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
- #   X89    X90    X91    X92    X93    X94    X95    X96    X97    X98    X99   X100 
- # 0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
-
-round(mmlcomp_emm$sigma, 3)
-# [1] 0.725
-```
-
-### FARLR-Debias
+### Fit FARLR-Debias
 
 ``` r
-mmlcomp_debias <- with(
+fit_debias <- with(
   sim_a1,
   Farlr_mml(
     X = X,
@@ -210,40 +140,345 @@ mmlcomp_debias <- with(
     parTab = parTab,
     method = "FARLR_Debias",
     main = main,
-    seed = 2026
+    lambda = seq(0.05, 0.50, length.out = 10),
+    n_sam = 25L,
+    n_sam_final = 60L,
+    seed = 2026,
+    progress = TRUE
   )
 )
-#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-#  |=====================================================================================================| 100%
-
-round(mmlcomp_debias$coefficients, 3)
-#    FS1    FS2     X1     X2     X3     X4     X5     X6     X7     X8     X9    X10    X11    X12    X13 
-#  0.170  0.517 -0.016  0.091  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 
-#    X14    X15    X16    X17    X18    X19    X20    X21    X22    X23    X24    X25    X26    X27    X28 
-#  0.000 -0.189  0.000  0.000  0.000  0.170  0.000  0.000  0.000  0.000 -0.332  0.000  0.000  0.000  0.228 
-#    X29    X30    X31    X32    X33    X34    X35    X36    X37    X38    X39    X40    X41    X42    X43 
-#  0.118  0.000  0.000  0.000  0.000 -0.152  0.271  0.000  0.000  0.000  0.000  0.000  0.128  0.000  0.150 
-#    X44    X45    X46    X47    X48    X49    X50    X51    X52    X53    X54    X55    X56    X57    X58 
-#  0.000  0.033  0.000  0.000  0.000 -0.164 -0.010  0.000  0.000  0.000 -0.153  0.000  0.000  0.000  0.000 
-#    X59    X60    X61    X62    X63    X64    X65    X66    X67    X68    X69    X70    X71    X72    X73 
-# -0.258  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 -0.194  0.640  0.000  0.000 
-#    X74    X75    X76    X77    X78    X79    X80    X81    X82    X83    X84    X85    X86    X87    X88 
-#  0.000  0.000  0.435  0.000  0.000 -0.263  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.394 
-#    X89    X90    X91    X92    X93    X94    X95    X96    X97    X98    X99   X100 
-# -0.419  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000
-   
-round(mmlcomp_debias$sigma, 3)
-# [1] 0.62
 ```
 
-### Mixed 3PL/GPCM responses
+### Fit FARLR-EMM
 
-The same input interface is used for `sim_a2`.
-[`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md)
-determines each item type from `parTab`.
+The input interface is the same; only `method` changes.
 
 ``` r
-mmlcomp_mixed <- with(
+fit_emm <- with(
+  sim_a1,
+  Farlr_mml(
+    X = X,
+    Y = Y,
+    parTab = parTab,
+    method = "FARLR_EMM",
+    main = main,
+    lambda = seq(0.05, 0.50, length.out = 10),
+    n_sam = 25L,
+    n_sam_final = 60L,
+    seed = 2026,
+    progress = TRUE
+  )
+)
+```
+
+## Examine a fitted FARL model
+
+The fitted object contains the coefficient estimates together with the
+factor-adjusted design, item information, scaling values, and fitting
+diagnostics needed for later plausible-value generation.
+
+| Component | Interpretation |
+|:---|:---|
+| `coefficients` | Named regression coefficients. Names beginning with `FS` refer to common-factor scores; names beginning with `X` refer to original covariates. |
+| `sigma` | Residual standard deviation of the latent trait after conditioning on the fitted predictors. |
+| `lambda` | Selected regularization value. |
+| `LogLik` | Objective or likelihood summary returned for the selected model. |
+| `Convergence` | Method-specific convergence indicator. |
+| `factor_scores` | Estimated common-factor scores for each respondent. |
+| `K_hat` | Number of common factors used in the fitted model. |
+| `hatU` | Factor-adjusted covariates used by `FARLR_Debias`. |
+| `Fan` | Final factor-plus-adjusted-covariate design used by `FARLR_Debias`. |
+| `X`, `X_center`, `X_scale` | Standardized covariates and the values used to standardize them. |
+| `item_params`, `item_type` | Item parameters and detected response-model type. |
+| `stuDat`, `stuItems` | Subject-level design information and long-format item responses retained for compatibility and PV generation. |
+
+### Check method and convergence
+
+``` r
+fit_debias$method
+fit_debias$K_hat
+fit_debias$lambda
+fit_debias$LogLik
+fit_debias$Convergence
+
+names(fit_debias)
+```
+
+If the selected `lambda` is the smallest or largest candidate, extend
+the grid and refit. If the model does not converge, increase `iter.max`,
+review the input variables, and assess stability across seeds and Monte
+Carlo settings.
+
+### Summarize coefficients
+
+Printing every coefficient is difficult when `X` is wide. A compact
+table of the largest coefficients is usually more informative.
+
+``` r
+coefficient_table <- data.frame(
+  predictor = names(fit_debias$coefficients),
+  coefficient = as.numeric(fit_debias$coefficients),
+  row.names = NULL
+)
+
+coefficient_table$source <- ifelse(
+  grepl("^FS", coefficient_table$predictor),
+  "Common factor",
+  "Original covariate"
+)
+
+coefficient_table <- coefficient_table[
+  order(abs(coefficient_table$coefficient), decreasing = TRUE),
+]
+
+head(coefficient_table, 15L)
+```
+
+A positive coefficient indicates that higher values of the predictor are
+associated with a higher population mean for the latent trait, holding
+the other included predictors constant. Coefficients describe
+associations and should not be interpreted causally.
+
+To inspect variables retained by the fitted model, apply a small
+numerical tolerance rather than comparing floating-point values directly
+with zero.
+
+``` r
+selection_tolerance <- 1e-8
+
+selected_coefficients <- subset(
+  coefficient_table,
+  abs(coefficient) > selection_tolerance
+)
+
+selected_coefficients
+```
+
+The common-factor scores summarize shared variation across `X`.
+Covariate coefficients represent information that remains useful after
+the factor adjustment. Primary variables supplied through `main` should
+be interpreted alongside the selected covariates rather than as a
+separate model.
+
+### Interpret residual variation
+
+``` r
+fit_debias$sigma
+fit_emm$sigma
+```
+
+`sigma` is a residual standard deviation, not a variance. A smaller
+value indicates that the fitted population model leaves less
+latent-trait variation unexplained. Comparisons are most useful when the
+same data, item parameters, and latent scale are used.
+
+### Inspect the factor-adjusted design
+
+``` r
+dim(fit_debias$factor_scores)
+head(fit_debias$factor_scores)
+
+dim(fit_debias$hatU)
+dim(fit_debias$Fan)
+head(colnames(fit_debias$Fan))
+
+fit_debias$X_center[1:6]
+fit_debias$X_scale[1:6]
+```
+
+`FARLR_Debias` uses `Fan`, which combines common-factor scores and
+factor-adjusted covariates. These stored objects are especially
+important when applying the model to new data or diagnosing unexpected
+coefficients.
+
+### Compare the two estimation methods
+
+``` r
+method_comparison <- data.frame(
+  method = c(fit_emm$method, fit_debias$method),
+  lambda = c(fit_emm$lambda, fit_debias$lambda),
+  sigma = c(fit_emm$sigma, fit_debias$sigma),
+  nonzero_coefficients = c(
+    sum(abs(fit_emm$coefficients) > selection_tolerance),
+    sum(abs(fit_debias$coefficients) > selection_tolerance)
+  ),
+  row.names = NULL
+)
+
+method_comparison
+```
+
+Different coefficient counts are expected because the two methods
+perform estimation and shrinkage correction differently. Method choice
+should be made before inspecting the final results and should be checked
+through sensitivity analyses when substantive conclusions depend on a
+small set of variables.
+
+## Generate plausible values
+
+[`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md)
+combines the fitted population model with each respondent’s observed
+item responses. It returns plausible values together with posterior
+summaries that are useful for checking the generated draws. Plausible
+values are intended for population and subgroup analyses, not for
+reporting an individual’s single score.
+
+### Plausible-value arguments
+
+| Argument | Applied meaning |
+|:---|:---|
+| `mmlcomp` | Object returned by [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md). |
+| `npv` | Number of plausible values generated for each respondent. |
+| `n_quad` | Number of points used to approximate each respondent’s posterior distribution. |
+| `theta_range` | Lower and upper limits of the initial latent-score grid. |
+| `adaptive_range` | When `TRUE`, allows the grid to expand for respondents whose fitted prior lies near or beyond the initial limits. |
+| `range_sd` | Controls how far the adaptive grid extends around the fitted prior mean. |
+| `design_matrix` | Optional replacement design matrix. Normally omitted so that FARL reconstructs the fitted design automatically. |
+| `theta` | Optional true trait values used only for simulation diagnostics. Omit this argument for real data. |
+| `seed` | Makes plausible-value generation reproducible. |
+| `return_details` | When `TRUE`, returns the PV matrix and posterior summaries in a list. |
+
+### Draw plausible values
+
+``` r
+farl_pvs <- Farlr_drawPVs(
+  mmlcomp = fit_debias,
+  npv = 10L,
+  n_quad = 30L,
+  theta_range = c(-4, 4),
+  adaptive_range = TRUE,
+  range_sd = 4,
+  seed = 2026,
+  progress = TRUE,
+  return_details = TRUE
+)
+```
+
+For simulation studies, `theta = sim_a1$theta` may be added to report
+the difference between the average posterior estimate and the average
+true trait. It should not be supplied in an empirical analysis.
+
+### Examine plausible-value output
+
+| Component | Interpretation |
+|:---|:---|
+| `data` | Numeric matrix containing only the plausible values. |
+| `datPVs` | Data frame containing respondent IDs and columns `_farl1`, `_farl2`, and so on. |
+| `EAP_estimates` | Respondent-level posterior means. |
+| `EAP_variance` | Respondent-level posterior variances. |
+| `posterior_mode` | Most likely grid value for each respondent. |
+| `prior_mean` | Latent-regression mean predicted by the fitted population model. |
+| `sigma` | Residual standard deviation copied from the fitted model. |
+| `mean_difference` | Simulation-only mean recovery diagnostic; `NA` when `theta` is omitted. |
+
+``` r
+names(farl_pvs)
+dim(farl_pvs$data)
+
+head(farl_pvs$datPVs)
+summary(farl_pvs$EAP_estimates)
+summary(farl_pvs$EAP_variance)
+
+cor(farl_pvs$EAP_estimates, farl_pvs$prior_mean)
+```
+
+Large posterior variances identify respondents whose response patterns
+provide less information about the latent trait. Differences between
+`prior_mean` and `EAP_estimates` show how the observed item responses
+update predictions from the background variables.
+
+## Use plausible values in secondary analyses
+
+Run the intended analysis separately for every plausible-value column
+and then combine the resulting estimates and uncertainty. Do not average
+the plausible values first and analyze that single average as if it were
+an observed score.
+
+The following helpers summarize the overall spread across a set of
+plausible values. `variance.sample()` averages the respondent-level
+variance across PV datasets, while `variance.cal()` also accounts for
+variation among the PV dataset means.
+
+``` r
+variance.sample <- function(theta_matrix) {
+  theta_matrix <- as.matrix(theta_matrix)
+  mean(apply(theta_matrix, 2L, stats::var))
+}
+
+variance.cal <- function(theta_matrix) {
+  theta_matrix <- as.matrix(theta_matrix)
+  number_of_pvs <- ncol(theta_matrix)
+  within_variance <- variance.sample(theta_matrix)
+  between_variance <- stats::var(colMeans(theta_matrix))
+
+  within_variance +
+    (1 + 1 / number_of_pvs) * between_variance
+}
+
+pv_matrix <- farl_pvs$data
+
+variance.sample(pv_matrix)
+variance.cal(pv_matrix)
+```
+
+For a substantive regression, repeat the model for each plausible value
+and store the coefficient and its sampling variance.
+
+``` r
+analysis_data <- data.frame(
+  outcome = sim_a1$X[, 1],
+  group = sim_a1$X[, 2]
+)
+
+pv_results <- lapply(
+  seq_len(ncol(farl_pvs$data)),
+  function(pv_index) {
+    model_data <- transform(
+      analysis_data,
+      plausible_value = farl_pvs$data[, pv_index]
+    )
+
+    model <- lm(plausible_value ~ group, data = model_data)
+
+    data.frame(
+      pv = pv_index,
+      estimate = coef(model)["group"],
+      sampling_variance = vcov(model)["group", "group"],
+      row.names = NULL
+    )
+  }
+)
+
+pv_results <- do.call(rbind, pv_results)
+pv_results
+```
+
+These stored estimates can then be combined using the
+multiple-imputation pooling procedure appropriate for the target
+analysis.
+
+## Mixed 3PL and GPCM responses
+
+The same FARL workflow applies when the assessment contains both binary
+3PL items and three-category GPCM items. `sim_a2` demonstrates this
+case.
+
+``` r
+data(sim_a2)
+
+dim(sim_a2$X)
+dim(sim_a2$Y)
+table(sim_a2$itemtype)
+
+sim_a2$parTab[, c(
+  "ItemID", "itemtype", "a", "b", "c", "b1", "b2"
+)]
+```
+
+Fit the model and generate PVs using the same public functions.
+
+``` r
+fit_mixed <- with(
   sim_a2,
   Farlr_mml(
     X = X,
@@ -254,435 +489,43 @@ mmlcomp_mixed <- with(
     seed = 2026
   )
 )
-# |=====================================================================================================| 100%
-PVs_mixed <- Farlr_drawPVs(
-  mmlcomp = mmlcomp_mixed,
-  npv = 5L,
+
+table(fit_mixed$item_type)
+
+pvs_mixed <- Farlr_drawPVs(
+  mmlcomp = fit_mixed,
+  npv = 10L,
+  adaptive_range = TRUE,
   seed = 2026
 )
-# |=============================================================| 100%
 
-PVs_mixed$datPVs |>
-  head() |>
-  dplyr::mutate(
-    dplyr::across(
-      where(is.numeric),
-      \(x) round(x, 3)
-    )
-  )
-#  id _farl1  _farl2  _farl3  _farl4  _farl5
-# 1 1   -0.450  -1.182  -0.624  -0.727  -0.993
-# 2 2   -0.011  0.793   0.664   1.176   0.911
-# 3 3   -0.357  -0.500  -0.274  -0.276  -1.306
-# 4 4   0.619   0.303   0.130   -0.313  0.334
-# 5 5   -1.238  -1.160  -1.740  -0.390  -1.060
-# 6 6   1.463   1.384   0.642   0.902   1.382
+head(pvs_mixed$datPVs)
 ```
 
-## Multidimensional Comparison
+For mixed-format assessments, check that every `parTab` row contains the
+parameters required by its item type. Missing responses remain coded as
+`NA` and are ignored for the corresponding item during posterior
+calculation.
 
-Multidimensional large-scale assessments must model both
-high-dimensional, correlated background variables and dependence among
-latent traits. A PCA-only population model can discard low-variance
-covariate information that remains predictive of achievement, while
-fitting latent-trait covariances separately can yield an incoherent
-covariance estimate. MFARLR instead combines common factors with
-sparsely selected covariates and estimates the dimensions jointly.
+## Practical checks
 
-The multidimensional functions retain the same compact data interface.
-Both models receive `X`, `Y`, and `parTab`; item slopes, intercepts, and
-dimension assignments are obtained from `parTab` internally.
+Before reporting a FARL analysis, verify the following:
 
-``` r
-data(sim_m1)
+- rows of `X` and `Y` refer to the same respondents;
+- rows of `parTab` match the item-column order in `Y`;
+- covariates are numeric and have nonzero variance;
+- response codes agree with their item types;
+- primary covariates in `main` are the intended columns of `X`;
+- the selected `lambda` is not constrained by an inadequate grid;
+- fitting results are stable across Monte Carlo seeds and larger sample
+  sizes;
+- `sigma` is positive and convergence diagnostics are acceptable; and
+- all plausible values, rather than their respondent-level average, are
+  used in secondary analyses.
 
-dim(sim_m1$X)
-# [1] 3000   60
-dim(sim_m1$Y)
-# [1] 3000   30
-dim(sim_m1$theta)
-# [1] 3000    5
-head(sim_m1$parTab)
-# 1 1   1   0.9090085   1.0852796   -0.9865284  0   item1   mcomp   dimension1  
-# 2 2   1   -1.4605271  0.9679681   1.4137436   0   item2   mcomp   dimension1  
-# 3 3   1   0.7797827   0.8828721   -0.6884484  0   item3   mcomp   dimension1  
-# 4 4   1   -0.2210281  1.1166641   0.2468141   0   item4   mcomp   dimension1  
-# 5 5   1   -0.7199442  1.0148336   0.7306235   0   item5   mcomp   dimension1  
-# 6 6   1   0.8171910   1.1513335   -0.9408594  0   item6   mcomp   dimension1  
-```
-
-### Fit MFARLR-GVEM
-
-MFARLR uses three steps. First, factor analysis summarizes the common
-variation in the standardized covariates. Second, `FARLR_Debias` screens
-covariates within each latent dimension, retaining predictors selected
-for at least one dimension. Third, the selected sparsity pattern is held
-fixed while GVEM jointly updates the coefficient matrix, person-specific
-variational moments, and the full latent residual covariance. The
-Gaussian variational posterior makes these updates computationally
-feasible without multidimensional quadrature.
-
-``` r
-mfarlr_mmlcomp <- MFARLR_mml(
-  X = sim_m1$X,
-  Y = sim_m1$Y,
-  parTab = sim_m1$parTab,
-  farlr_args = list(
-    n_sam = 5L,
-    lambda = c(0.05, 0.10),
-    main = sim_m1$main,
-    delta.criteria = 1e-2,
-    iter.max = 20L,
-    window.size = 200L,
-    progress = FALSE,
-    verbose = FALSE,
-    seed = 123,
-    proposal_inflation = 0.2,
-    n_sam_final = 10L
-  ),
-  selection_tol = 1e-8,
-  max_iter = 500L,
-  threshold = 1e-3,
-  ridge = 1e-6,
-  verbose = TRUE
-)
-#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# Dimension 1: selected 16 of 64 coefficients.
-#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# Dimension 2: selected 15 of 64 coefficients.
-#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# Dimension 3: selected 16 of 64 coefficients.
-#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# Dimension 4: selected 9 of 64 coefficients.
-#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  
-# Dimension 5: selected 16 of 64 coefficients.
-# Running joint GVEM iterations
-#   |=============================================================================================| 100%
-# Converged at iteration 112.
-
-mfarlr_mmlcomp$convergence
-# [1] "Converged"
-
-mfarlr_mmlcomp$sigma
-#           [,1]      [,2]      [,3]      [,4]      [,5]
-# [1,] 0.2190553 0.1585642 0.1757711 0.2325277 0.1732133
-# [2,] 0.1585642 0.1985374 0.1529688 0.1974590 0.1520352
-# [3,] 0.1757711 0.1529688 0.2157257 0.2137705 0.1667811
-# [4,] 0.2325277 0.1974590 0.2137705 0.3411085 0.2100602
-# [5,] 0.1732133 0.1520352 0.1667811 0.2100602 0.1827474
-
-colSums(mfarlr_mmlcomp$index != 0)
-# Dimension1 Dimension2 Dimension3 Dimension4 Dimension5 
-#        16         15         16          9         16 
-```
-
-### Draw MFARLR plausible values
-
-[`MFARLR_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md)
-combines the fitted multivariate latent-regression prior with each
-respondent’s item-response likelihood. Monte Carlo draws from the prior
-are likelihood-weighted to approximate the posterior mean and
-covariance, from which correlated plausible values are generated. These
-draws are intended for population and subgroup inference rather than
-individual scoring. The fitted object retains `Y`, the loading matrix,
-and the item intercepts, so they do not need to be supplied again.
-
-``` r
-mfarlr_PVs <- MFARLR_drawPVs(
-  mmlcomp = mfarlr_mmlcomp,
-  npv = 10L,
-  n_mc = 20000L,
-  theta = sim_m1$theta,
-  seed = 123,
-  progress = TRUE
-)
-
-head(mfarlr_PVs$datPVs)
-# 1 1   1.8331415   1.0255773   1.7989627   
-# 2 2   -1.4005349  -0.9627111  -1.3675437  
-# 3 3   0.8416554   0.7384778   0.8474027   
-# 4 4   0.6554288   0.6192607   0.5148276   
-# 5 5   -1.9824367  -0.9432195  -1.7840723  
-# 6 6   -0.6649487  -0.6527626  -1.1258259  
-
-mfarlr_PVs$mean_difference
-# Dimension1  Dimension2  Dimension3  Dimension4  Dimension5 
-# 0.002031074 0.002331433 0.001994496 0.002648474 0.002528947 
-```
-
-### Fit multidimensional DIRE
-
-Multidimensional DIRE provides the PCA-based comparison model. It uses
-the same responses and item parameters, allowing the resulting plausible
-values to be compared with MFARLR under a common data setup.
-
-``` r
-dire_mmlcomp <- MDIRE_mml(
-  X = sim_m1$X,
-  Y = sim_m1$Y,
-  parTab = sim_m1$parTab,
-  main = sim_m1$main,
-  pca_type = "cov",
-  use_residual = TRUE,
-  var_threshold = 0.90,
-  calcCor = TRUE
-)
-
-dire_PVs <- MDIRE_drawPVs(
-  object = dire_mmlcomp,
-  npv = 10L,
-  group_vars = sim_m1$main
-)
-# Calculating posterior distribution for construct A (1 of 5)
-# Calculating posterior distribution for construct B (2 of 5)
-# Calculating posterior distribution for construct C (3 of 5)
-# Calculating posterior distribution for construct D (4 of 5)
-# Calculating posterior distribution for construct E (5 of 5)
-# Calculating posterior correlation between construct A and B (1 of 10)
-# Calculating posterior correlation between construct A and C (2 of 10)
-# Calculating posterior correlation between construct A and D (3 of 10)
-# Calculating posterior correlation between construct A and E (4 of 10)
-# Calculating posterior correlation between construct B and C (5 of 10)
-# Calculating posterior correlation between construct B and D (6 of 10)
-# Calculating posterior correlation between construct B and E (7 of 10)
-# Calculating posterior correlation between construct C and D (8 of 10)
-# Calculating posterior correlation between construct C and E (9 of 10)
-# Calculating posterior correlation between construct D and E (10 of 10)
-# Generating plausible values.
-```
-
-### Compare multidimensional plausible values
-
-The two PV outputs are first restored to the original `sim_m1` subject
-order. PV1 is then extracted separately for every latent dimension.
-Correlation and RMSE provide a compact simulation check of
-latent-distribution recovery; in an applied analysis, inference should
-combine estimates across all plausible values rather than treating a
-single draw as an observed score.
-
-``` r
-N <- nrow(sim_m1$X)
-D <- ncol(sim_m1$theta)
-subject_order <- as.character(seq_len(N))
-
-order_PVs <- function(dat) {
-  row_order <- match(subject_order, as.character(dat$id))
-  if (anyNA(row_order)) {
-    stop("Some subjects are missing from the PV output.")
-  }
-  dat <- dat[row_order, , drop = FALSE]
-  rownames(dat) <- NULL
-  dat
-}
-
-mfarlr_dat <- order_PVs(mfarlr_PVs$datPVs)
-dire_dat <- order_PVs(dire_PVs$data)
-
-mfarlr_first_PV <- sapply(
-  seq_len(D),
-  function(dimension) {
-    mfarlr_dat[[paste0("_mfarlr_D", dimension, "_PV1")]]
-  }
-)
-
-dire_first_PV <- sapply(
-  seq_len(D),
-  function(dimension) {
-    subtest <- dire_mmlcomp$subtest_names[dimension]
-    dire_dat[[paste0(subtest, "_dire1")]]
-  }
-)
-
-dimension_names <- paste0("Dimension", seq_len(D))
-colnames(mfarlr_first_PV) <- dimension_names
-colnames(dire_first_PV) <- dimension_names
-
-multidimensional_comparison <- do.call(
-  rbind,
-  lapply(seq_len(D), function(dimension) {
-    truth <- sim_m1$theta[, dimension]
-    mfarlr_error <- mfarlr_first_PV[, dimension] - truth
-    dire_error <- dire_first_PV[, dimension] - truth
-
-    data.frame(
-      dimension = dimension,
-      MFARLR_correlation = stats::cor(
-        truth,
-        mfarlr_first_PV[, dimension]
-      ),
-      DIRE_correlation = stats::cor(
-        truth,
-        dire_first_PV[, dimension]
-      ),
-      MFARLR_RMSE = sqrt(mean(mfarlr_error^2)),
-      DIRE_RMSE = sqrt(mean(dire_error^2))
-    )
-  })
-)
-
-round(multidimensional_comparison, 3)
-
-#dimension MFARLR_correlation DIRE_correlation MFARLR_RMSE DIRE_RMSE
-#1  0.867   0.772   0.521   0.676
-#2  0.816   0.724   0.588   0.724
-#3  0.848   0.740   0.556   0.746
-#4  0.762   0.673   0.674   0.818
-#5  0.866   0.775   0.504   0.681
-```
-
-The following figure overlays the two sets of PVs in every dimension.
-Solid lines are method-specific regressions and the dashed line is the
-identity line. A shared legend is placed in the final panel to avoid
-covering the data.
-
-``` r
-plot_MFARLR_MDIRE <- function(
-    theta,
-    mfarlr_first_PV,
-    dire_first_PV,
-    file = NULL
-) {
-  theta <- as.matrix(theta)
-  mfarlr_first_PV <- as.matrix(mfarlr_first_PV)
-  dire_first_PV <- as.matrix(dire_first_PV)
-
-  stopifnot(
-    identical(dim(theta), dim(mfarlr_first_PV)),
-    identical(dim(theta), dim(dire_first_PV))
-  )
-
-  D <- ncol(theta)
-  total_panels <- D + 1L
-  panel_columns <- ceiling(sqrt(total_panels))
-  panel_rows <- ceiling(total_panels / panel_columns)
-
-  save_plot <- !is.null(file)
-  if (save_plot) {
-    grDevices::png(
-      filename = file,
-      width = 3000,
-      height = 2100,
-      res = 300
-    )
-  }
-
-  old_par <- graphics::par(no.readonly = TRUE)
-  on.exit({
-    graphics::par(old_par)
-    if (save_plot && grDevices::dev.cur() > 1L) {
-      grDevices::dev.off()
-    }
-  }, add = TRUE)
-
-  graphics::par(
-    mfrow = c(panel_rows, panel_columns),
-    mar = c(4.5, 4.5, 3, 1),
-    oma = c(0, 0, 5, 0)
-  )
-
-  for (dimension in seq_len(D)) {
-    truth <- theta[, dimension]
-    mfarlr_pv <- mfarlr_first_PV[, dimension]
-    dire_pv <- dire_first_PV[, dimension]
-    plot_range <- range(truth, mfarlr_pv, dire_pv, finite = TRUE)
-
-    graphics::plot(
-      NA_real_, NA_real_,
-      xlim = plot_range,
-      ylim = plot_range,
-      xlab = paste0("True theta, dimension ", dimension),
-      ylab = "First plausible value",
-      main = paste0("Dimension ", dimension)
-    )
-    graphics::grid(col = "gray90")
-    graphics::points(
-      truth, dire_pv,
-      pch = 16, cex = 0.45,
-      col = grDevices::adjustcolor("steelblue", alpha.f = 0.30)
-    )
-    graphics::points(
-      truth, mfarlr_pv,
-      pch = 16, cex = 0.45,
-      col = grDevices::adjustcolor("darkorange", alpha.f = 0.30)
-    )
-    graphics::abline(
-      stats::lm(dire_pv ~ truth),
-      col = "steelblue", lwd = 3
-    )
-    graphics::abline(
-      stats::lm(mfarlr_pv ~ truth),
-      col = "darkorange", lwd = 3
-    )
-    graphics::abline(0, 1, col = "gray35", lwd = 2, lty = 2)
-  }
-
-  graphics::par(mar = c(0, 0, 0, 0))
-  graphics::plot.new()
-  graphics::legend(
-    "center",
-    title = "Method",
-    legend = c("DIRE regression", "MFARLR regression", "Identity"),
-    col = c("steelblue", "darkorange", "gray35"),
-    lty = c(1, 1, 2),
-    lwd = c(3, 3, 2),
-    bty = "n",
-    cex = 1.05
-  )
-
-  unused_panels <- panel_rows * panel_columns - total_panels
-  if (unused_panels > 0L) {
-    for (panel in seq_len(unused_panels)) {
-      graphics::plot.new()
-    }
-  }
-
-  graphics::mtext(
-    "Comparison of MFARLR and DIRE Plausible Values",
-    side = 3,
-    outer = TRUE,
-    line = 2,
-    cex = 1.5,
-    font = 2
-  )
-
-  invisible(file)
-}
-
-plot_MFARLR_MDIRE(
-  theta = sim_m1$theta,
-  mfarlr_first_PV = mfarlr_first_PV,
-  dire_first_PV = dire_first_PV,
-  file = "multidimensional_PV_comparison.png"
-)
-```
-
-![](figures/multidimensional_PV_comparison.png) \# Main Outputs
+## Main FARL outputs
 
 | Function | Main output |
 |:---|:---|
-| [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md) | Coefficients, residual SD, selected tuning parameter, factor scores, and method-specific designs |
-| [`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md) | PV data, EAP estimates, posterior variances, modes, and prior means |
-| [`Dire_mml()`](https://map-lab-uw.github.io/FARL/reference/Dire_mml.md) | DIRE `mmlMeans` object, coefficients, and PCA object |
-| [`Dire_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Dire_drawPVs.md) | Respondent IDs and unidimensional plausible values |
-| [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md) | Coefficient matrix, residual covariance, selection matrix, variational moments, and retained inputs |
-| [`MFARLR_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md) | Multidimensional PV array, wide PV data, EAP means and covariances, and effective sample sizes |
-| [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md) | Multidimensional DIRE fit, PCA object, item assignments, and retained inputs |
-| [`MDIRE_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_drawPVs.md) | Dimension-specific PVs and optional subgroup summaries |
-
-## Notes
-
-- Rows of `X` and `Y` must correspond to the same respondents.
-- Rows of `parTab` must follow the item-column order in `Y`.
-- `main` uses column indices or names from `X`, depending on the
-  function.
-- Set `seed` for reproducible estimation and PV generation.
-- [`MFARLR_mml()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_mml.md)
-  currently supports multidimensional binary 2PL items.
-- [`MDIRE_mml()`](https://map-lab-uw.github.io/FARL/reference/MDIRE_mml.md)
-  requires every item to load on exactly one dimension.
-- A larger `n_mc` improves the Monte Carlo approximation in
-  [`MFARLR_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/MFARLR_drawPVs.md)
-  but increases computation time.
-- The vignette chunks are not evaluated during routine package builds
-  because the complete estimation examples are computationally
-  intensive.
+| [`Farlr_mml()`](https://map-lab-uw.github.io/FARL/reference/Farlr_mml.md) | Coefficients, residual SD, selected regularization value, factor scores, factor-adjusted designs, item information, and fitting diagnostics. |
+| [`Farlr_drawPVs()`](https://map-lab-uw.github.io/FARL/reference/Farlr_drawPVs.md) | Plausible-value matrix, ID-based PV data frame, EAP estimates, posterior variances, posterior modes, and fitted prior means. |

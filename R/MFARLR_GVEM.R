@@ -180,94 +180,419 @@ multidim_item_parameters <- function(parTab, J, allow_guessing = FALSE) {
 }
 
 
+#' Estimate dimension-specific regression coefficients in block form
+#'
+#' The target matrix is vectorized by dimension and the dimension-specific
+#' design matrices are placed on the diagonal of a single block design. The
+#' default uses the ordinary least-squares update in Equation (28) of the
+#' paper. A positive `lambda` remains available only as an optional numerical
+#' regularization outside the paper-aligned fit.
+#'
+#' @param mu_hat `N` by `D` matrix of target posterior means.
+#' @param X_list List of `D` design matrices. Element `d` must have `N` rows.
+#' @param lambda Nonnegative ridge regularization constant.
+#'
+#' @return A list containing the combined coefficient vector, the coefficients
+#'   split by dimension, the block design matrix, and the vectorized target.
+#' @noRd
+estimate_block_design_beta <- function(mu_hat, X_list, lambda = 0) {
+  mu_hat <- as.matrix(mu_hat)
+  N <- nrow(mu_hat)
+  D <- ncol(mu_hat)
+
+  if (!is.numeric(mu_hat) || any(!is.finite(mu_hat))) {
+    stop("mu_hat must be a finite numeric matrix.", call. = FALSE)
+  }
+  if (!is.list(X_list) || length(X_list) != D) {
+    stop("X_list must contain one design matrix per latent dimension.", call. = FALSE)
+  }
+  if (length(lambda) != 1L || !is.finite(lambda) || lambda < 0) {
+    stop("lambda must be one nonnegative finite number.", call. = FALSE)
+  }
+  if (!requireNamespace("Matrix", quietly = TRUE)) {
+    stop("The Matrix package is required.", call. = FALSE)
+  }
+
+  X_list <- lapply(seq_len(D), function(dimension) {
+    design <- as.matrix(X_list[[dimension]])
+    if (nrow(design) != N || !is.numeric(design) || any(!is.finite(design))) {
+      stop(
+        "X_list[[", dimension, "]] must be a finite numeric matrix with N rows.",
+        call. = FALSE
+      )
+    }
+    if (ncol(design) == 0L) {
+      stop(
+        "X_list[[", dimension, "]] must contain at least one predictor.",
+        call. = FALSE
+      )
+    }
+    design
+  })
+
+  predictors_per_dimension <- vapply(X_list, ncol, integer(1L))
+  total_predictors <- sum(predictors_per_dimension)
+  target_block <- as.vector(mu_hat)
+
+  design_block <- Matrix::Matrix(
+    0,
+    nrow = N * D,
+    ncol = total_predictors,
+    sparse = FALSE
+  )
+
+  column_end <- cumsum(predictors_per_dimension)
+  column_start <- c(1L, head(column_end, -1L) + 1L)
+
+  for (dimension in seq_len(D)) {
+    rows <- ((dimension - 1L) * N + 1L):(dimension * N)
+    columns <- column_start[dimension]:column_end[dimension]
+    design_block[rows, columns] <- X_list[[dimension]]
+  }
+
+  cross_product <- Matrix::crossprod(design_block)
+  if (lambda > 0) {
+    cross_product <-
+      cross_product + Matrix::Diagonal(total_predictors, x = lambda)
+  }
+  cross_target <- Matrix::crossprod(design_block, target_block)
+
+  beta_block <- tryCatch(
+    Matrix::solve(cross_product, cross_target),
+    error = function(error) {
+      stop(
+        "The block regression could not be solved: ",
+        conditionMessage(error),
+        call. = FALSE
+      )
+    }
+  )
+
+  beta_list <- split(
+    as.numeric(beta_block),
+    rep(seq_len(D), times = predictors_per_dimension)
+  )
+
+  list(
+    beta_block = beta_block,
+    beta_list = beta_list,
+    X_block = design_block,
+    Y_block = target_block
+  )
+}
+
+
+# Legacy ridge-based implementation retained for comparison.
+#
+# Perform one multidimensional GVEM iteration
+#
+# The item discrimination and intercept parameters are treated as fixed. The
+# function updates the subject-level variational moments, the selected latent
+# regression coefficients, the residual covariance matrix, and `xi`.
+#
+# @param resp `N` by `J` binary response matrix. Missing responses may be `NA`.
+# @param Z `N` by `P` latent-regression design matrix.
+# @param sigma_hat Current `D` by `D` residual covariance matrix.
+# @param a `J` by `D` item discrimination matrix.
+# @param d0 Length-`J` item intercept vector.
+# @param xi_hat Current `N` by `J` variational-parameter matrix.
+# @param D Number of latent dimensions.
+# @param index `P` by `D` binary matrix. A value of one indicates that the
+#   corresponding regression coefficient is estimated.
+# @param beta_hat Current `P` by `D` regression-coefficient matrix.
+# @param ridge Nonnegative ridge constant used in the selected regressions.
+#
+# @return A list containing `omega`, `mu`, `sigma`, `xi`, and `coef`.
+# gvem_ite_once <- function(
+    #     resp,
+#     Z,
+#     sigma_hat,
+#     a,
+#     d0,
+#     xi_hat,
+#     D,
+#     index,
+#     beta_hat,
+#     ridge = 1e-6
+# ) {
+#   resp <- as.matrix(resp)
+#   Z <- as.matrix(Z)
+#   sigma_hat <- as.matrix(sigma_hat)
+#   a <- as.matrix(a)
+#   xi_hat <- as.matrix(xi_hat)
+#   index <- as.matrix(index)
+#   beta_hat <- as.matrix(beta_hat)
+#   d0 <- as.numeric(d0)
+#
+#   N <- nrow(resp)
+#   J <- ncol(resp)
+#   P <- ncol(Z)
+#
+#   if (!identical(dim(a), c(J, D))) {
+#     stop("a must be a J by D matrix.", call. = FALSE)
+#   }
+#   if (length(d0) != J || any(!is.finite(d0))) {
+#     stop("d0 must contain J finite item intercepts.", call. = FALSE)
+#   }
+#   if (!identical(dim(sigma_hat), c(D, D))) {
+#     stop("sigma_hat must be a D by D matrix.", call. = FALSE)
+#   }
+#   if (!identical(dim(xi_hat), c(N, J))) {
+#     stop("xi_hat must be an N by J matrix.", call. = FALSE)
+#   }
+#   if (!identical(dim(index), c(P, D))) {
+#     stop("index must be a ncol(Z) by D matrix.", call. = FALSE)
+#   }
+#   if (!identical(dim(beta_hat), c(P, D))) {
+#     stop("beta_hat must be a ncol(Z) by D matrix.", call. = FALSE)
+#   }
+#   if (any(!is.finite(Z)) || any(!is.finite(a)) ||
+#       any(!is.finite(sigma_hat)) || any(!is.finite(xi_hat))) {
+#     stop("Z, a, sigma_hat, and xi_hat must be finite.", call. = FALSE)
+#   }
+#   observed_response <- resp[!is.na(resp)]
+#   if (any(!observed_response %in% c(0, 1))) {
+#     stop("resp must contain only 0, 1, or NA.", call. = FALSE)
+#   }
+#   if (length(ridge) != 1L || !is.finite(ridge) || ridge < 0) {
+#     stop("ridge must be one nonnegative finite number.", call. = FALSE)
+#   }
+#
+#   sigma_inverse <- tryCatch(
+#     solve(sigma_hat),
+#     error = function(e) {
+#       stop("sigma_hat is singular: ", conditionMessage(e), call. = FALSE)
+#     }
+#   )
+#
+#   prior_mean <- Z %*% beta_hat
+#   mu_hat <- matrix(0, nrow = N, ncol = D)
+#   omega_hat <- array(0, dim = c(N, D, D))
+#   hxi <- matrix(quaeta(xi_hat), nrow = N, ncol = J)
+#
+#   # E-step: update the variational posterior moments.
+#   for (i in seq_len(N)) {
+#     posterior_precision <- sigma_inverse
+#     linear_term <- numeric(D)
+#     observed_items <- which(!is.na(resp[i, ]))
+#
+#     for (j in observed_items) {
+#       loading <- a[j, ]
+#       weight <- hxi[i, j]
+#       posterior_precision <-
+#         posterior_precision + 2 * weight * tcrossprod(loading)
+#       linear_term <-
+#         linear_term +
+#         (resp[i, j] - 2 * weight * d0[j] - 0.5) * loading
+#     }
+#
+#     omega_i <- tryCatch(
+#       solve(posterior_precision),
+#       error = function(e) {
+#         stop(
+#           "Posterior precision is singular for respondent ", i, ": ",
+#           conditionMessage(e),
+#           call. = FALSE
+#         )
+#       }
+#     )
+#
+#     omega_hat[i, , ] <- omega_i
+#     mu_hat[i, ] <- drop(
+#       omega_i %*% (sigma_inverse %*% prior_mean[i, ] + linear_term)
+#     )
+#   }
+#
+#   # Update the local variational parameters.
+#   for (i in seq_len(N)) {
+#     observed_items <- which(!is.na(resp[i, ]))
+#     for (j in observed_items) {
+#       loading <- a[j, ]
+#       posterior_variance <- drop(
+#         crossprod(loading, omega_hat[i, , ] %*% loading)
+#       )
+#       posterior_location <- sum(loading * mu_hat[i, ]) + d0[j]
+#       xi_hat[i, j] <- sqrt(max(
+#         .Machine$double.eps,
+#         posterior_location^2 + posterior_variance
+#       ))
+#     }
+#   }
+#
+#   # M-step: update only coefficients selected by the dimension-specific
+#   # FARLR_Debias fits.
+#   beta_new <- matrix(
+#     0,
+#     nrow = P,
+#     ncol = D,
+#     dimnames = dimnames(beta_hat)
+#   )
+#
+#   for (dimension in seq_len(D)) {
+#     selected <- which(index[, dimension] != 0)
+#     if (length(selected) == 0L) {
+#       next
+#     }
+#
+#     Z_selected <- Z[, selected, drop = FALSE]
+#     cross_product <- crossprod(Z_selected)
+#     diag(cross_product) <- diag(cross_product) + ridge
+#
+#     beta_new[selected, dimension] <- drop(
+#       solve(
+#         cross_product,
+#         crossprod(Z_selected, mu_hat[, dimension])
+#       )
+#     )
+#   }
+#
+#   # Update the residual covariance using the posterior covariance and the
+#   # posterior residual outer products.
+#   fitted_mean <- Z %*% beta_new
+#   sigma_new <- matrix(0, nrow = D, ncol = D)
+#
+#   for (i in seq_len(N)) {
+#     residual_i <- mu_hat[i, ] - fitted_mean[i, ]
+#     sigma_new <-
+#       sigma_new + omega_hat[i, , ] + tcrossprod(residual_i)
+#   }
+#
+#   sigma_new <- sigma_new / N
+#   sigma_new <- (sigma_new + t(sigma_new)) / 2
+#
+#   list(
+#     omega = omega_hat,
+#     mu = mu_hat,
+#     sigma = sigma_new,
+#     xi = xi_hat,
+#     coef = beta_new
+#   )
+# }
+
+
 #' Perform one multidimensional GVEM iteration
 #'
-#' The item discrimination and intercept parameters are treated as fixed. The
-#' function updates the subject-level variational moments, the selected latent
-#' regression coefficients, the residual covariance matrix, and `xi`.
+#' This implementation follows the paper's GVEM updates. Missing responses are
+#' omitted from the subject-specific likelihood contribution and from the
+#' local variational-parameter update. The latent-regression mean is `Z gamma`;
+#' no additional empirical mean adjustment is introduced.
 #'
-#' @param resp `N` by `J` binary response matrix. Missing responses may be `NA`.
+#' @param resp `N` by `J` binary response matrix with optional `NA` values.
 #' @param Z `N` by `P` latent-regression design matrix.
 #' @param sigma_hat Current `D` by `D` residual covariance matrix.
+#' @param beta_hat Current `P` by `D` regression-coefficient matrix.
 #' @param a `J` by `D` item discrimination matrix.
 #' @param d0 Length-`J` item intercept vector.
 #' @param xi_hat Current `N` by `J` variational-parameter matrix.
 #' @param D Number of latent dimensions.
-#' @param index `P` by `D` binary matrix. A value of one indicates that the
-#'   corresponding regression coefficient is estimated.
-#' @param beta_hat Current `P` by `D` regression-coefficient matrix.
-#' @param ridge Nonnegative ridge constant used in the selected regressions.
+#' @param index `P` by `D` coefficient-selection matrix.
+#' @param mu_hat Previous `N` by `D` variational posterior-mean matrix. This
+#'   argument is retained for compatibility with the original interface and is
+#'   validated, but the paper's one-step update does not otherwise require it.
 #'
-#' @return A list containing `omega`, `mu`, `sigma`, `xi`, and `coef`.
+#' @return A list containing `omega`, `mu`, `sigma`, `xi`, `coef`, and `coef2`.
 #' @noRd
 gvem_ite_once <- function(
     resp,
     Z,
     sigma_hat,
+    beta_hat,
     a,
     d0,
     xi_hat,
     D,
     index,
-    beta_hat,
-    ridge = 1e-6
+    mu_hat
 ) {
   resp <- as.matrix(resp)
   Z <- as.matrix(Z)
   sigma_hat <- as.matrix(sigma_hat)
+  beta_hat <- as.matrix(beta_hat)
   a <- as.matrix(a)
+  d0 <- as.numeric(d0)
   xi_hat <- as.matrix(xi_hat)
   index <- as.matrix(index)
-  beta_hat <- as.matrix(beta_hat)
-  d0 <- as.numeric(d0)
+  mu_hat <- as.matrix(mu_hat)
 
   N <- nrow(resp)
   J <- ncol(resp)
   P <- ncol(Z)
 
-  if (!identical(dim(a), c(J, D))) {
+  if (nrow(Z) != N) {
+    stop("resp and Z must have the same number of rows.", call. = FALSE)
+  }
+  if (!all(dim(a) == c(J, D))) {
     stop("a must be a J by D matrix.", call. = FALSE)
   }
   if (length(d0) != J || any(!is.finite(d0))) {
     stop("d0 must contain J finite item intercepts.", call. = FALSE)
   }
-  if (!identical(dim(sigma_hat), c(D, D))) {
+  if (!all(dim(sigma_hat) == c(D, D))) {
     stop("sigma_hat must be a D by D matrix.", call. = FALSE)
   }
-  if (!identical(dim(xi_hat), c(N, J))) {
-    stop("xi_hat must be an N by J matrix.", call. = FALSE)
-  }
-  if (!identical(dim(index), c(P, D))) {
-    stop("index must be a ncol(Z) by D matrix.", call. = FALSE)
-  }
-  if (!identical(dim(beta_hat), c(P, D))) {
+  if (!all(dim(beta_hat) == c(P, D))) {
     stop("beta_hat must be a ncol(Z) by D matrix.", call. = FALSE)
   }
-  if (any(!is.finite(Z)) || any(!is.finite(a)) ||
-      any(!is.finite(sigma_hat)) || any(!is.finite(xi_hat))) {
-    stop("Z, a, sigma_hat, and xi_hat must be finite.", call. = FALSE)
+  if (!all(dim(index) == c(P, D))) {
+    stop("index must be a ncol(Z) by D matrix.", call. = FALSE)
   }
+  if (!all(dim(xi_hat) == c(N, J))) {
+    stop("xi_hat must be an N by J matrix.", call. = FALSE)
+  }
+  if (!all(dim(mu_hat) == c(N, D))) {
+    stop("mu_hat must be an N by D matrix.", call. = FALSE)
+  }
+  if (any(!is.finite(Z)) || any(!is.finite(a)) ||
+      any(!is.finite(sigma_hat)) || any(!is.finite(beta_hat)) ||
+      any(!is.finite(index)) || any(!is.finite(xi_hat)) ||
+      any(!is.finite(mu_hat))) {
+    stop(
+      "Z, a, sigma_hat, beta_hat, index, xi_hat, and mu_hat must be finite.",
+      call. = FALSE
+    )
+  }
+
   observed_response <- resp[!is.na(resp)]
   if (any(!observed_response %in% c(0, 1))) {
     stop("resp must contain only 0, 1, or NA.", call. = FALSE)
   }
-  if (length(ridge) != 1L || !is.finite(ridge) || ridge < 0) {
-    stop("ridge must be one nonnegative finite number.", call. = FALSE)
+  if (!exists("quaeta", mode = "function")) {
+    stop("The function quaeta() is not available.", call. = FALSE)
   }
+  if (!exists("estimate_block_design_beta", mode = "function")) {
+    stop(
+      "The function estimate_block_design_beta() is not available.",
+      call. = FALSE
+    )
+  }
+
+  beta_hat <- beta_hat * index
+  predictor <- Z
+  prior_mu <- predictor %*% beta_hat
 
   sigma_inverse <- tryCatch(
     solve(sigma_hat),
-    error = function(e) {
-      stop("sigma_hat is singular: ", conditionMessage(e), call. = FALSE)
+    error = function(error) {
+      stop(
+        "sigma_hat is singular: ",
+        conditionMessage(error),
+        call. = FALSE
+      )
     }
   )
 
-  prior_mean <- Z %*% beta_hat
-  mu_hat <- matrix(0, nrow = N, ncol = D)
+  posterior_mu <- matrix(0, nrow = N, ncol = D)
   omega_hat <- array(0, dim = c(N, D, D))
-  hxi <- matrix(quaeta(xi_hat), nrow = N, ncol = J)
+  hxi <- matrix(1 / 8, nrow = N, ncol = J)
 
-  # E-step: update the variational posterior moments.
+  for (i in seq_len(N)) {
+    observed_items <- which(!is.na(resp[i, ]))
+    for (j in observed_items) {
+      hxi[i, j] <- quaeta(xi_hat[i, j])
+    }
+  }
+
+  # E-step: missing responses contribute no item-likelihood term.
   for (i in seq_len(N)) {
     posterior_precision <- sigma_inverse
     linear_term <- numeric(D)
@@ -276,8 +601,10 @@ gvem_ite_once <- function(
     for (j in observed_items) {
       loading <- a[j, ]
       weight <- hxi[i, j]
+
       posterior_precision <-
         posterior_precision + 2 * weight * tcrossprod(loading)
+
       linear_term <-
         linear_term +
         (resp[i, j] - 2 * weight * d0[j] - 0.5) * loading
@@ -285,39 +612,63 @@ gvem_ite_once <- function(
 
     omega_i <- tryCatch(
       solve(posterior_precision),
-      error = function(e) {
+      error = function(error) {
         stop(
-          "Posterior precision is singular for respondent ", i, ": ",
-          conditionMessage(e),
+          "Posterior precision is singular for respondent ",
+          i,
+          ": ",
+          conditionMessage(error),
           call. = FALSE
         )
       }
     )
 
     omega_hat[i, , ] <- omega_i
-    mu_hat[i, ] <- drop(
-      omega_i %*% (sigma_inverse %*% prior_mean[i, ] + linear_term)
+    posterior_mu[i, ] <- drop(
+      omega_i %*%
+        (
+          sigma_inverse %*% prior_mu[i, ] +
+            linear_term
+        )
     )
   }
 
-  # Update the local variational parameters.
-  for (i in seq_len(N)) {
-    observed_items <- which(!is.na(resp[i, ]))
-    for (j in observed_items) {
-      loading <- a[j, ]
-      posterior_variance <- drop(
-        crossprod(loading, omega_hat[i, , ] %*% loading)
-      )
-      posterior_location <- sum(loading * mu_hat[i, ]) + d0[j]
-      xi_hat[i, j] <- sqrt(max(
-        .Machine$double.eps,
-        posterior_location^2 + posterior_variance
-      ))
-    }
+  selected_index <- lapply(
+    seq_len(D),
+    function(dimension) which(index[, dimension] != 0)
+  )
+
+  if (any(lengths(selected_index) == 0L)) {
+    empty_dimensions <- which(lengths(selected_index) == 0L)
+    stop(
+      "No predictor is selected for latent dimension(s): ",
+      paste(empty_dimensions, collapse = ", "),
+      call. = FALSE
+    )
   }
 
-  # M-step: update only coefficients selected by the dimension-specific
-  # FARLR_Debias fits.
+  X_list <- lapply(
+    seq_len(D),
+    function(dimension) {
+      predictor[, selected_index[[dimension]], drop = FALSE]
+    }
+  )
+
+  beta_result <- estimate_block_design_beta(
+    mu_hat = posterior_mu,
+    X_list = X_list,
+    lambda = 0
+  )
+
+  if (is.null(beta_result$beta_list) ||
+      length(beta_result$beta_list) != D) {
+    stop(
+      "estimate_block_design_beta() must return one coefficient vector ",
+      "per latent dimension in beta_list.",
+      call. = FALSE
+    )
+  }
+
   beta_new <- matrix(
     0,
     nrow = P,
@@ -326,43 +677,83 @@ gvem_ite_once <- function(
   )
 
   for (dimension in seq_len(D)) {
-    selected <- which(index[, dimension] != 0)
-    if (length(selected) == 0L) {
-      next
+    selected <- selected_index[[dimension]]
+    estimated_beta <- as.numeric(beta_result$beta_list[[dimension]])
+
+    if (length(estimated_beta) != length(selected)) {
+      stop(
+        "Coefficient length mismatch for latent dimension ",
+        dimension,
+        ".",
+        call. = FALSE
+      )
     }
 
-    Z_selected <- Z[, selected, drop = FALSE]
-    cross_product <- crossprod(Z_selected)
-    diag(cross_product) <- diag(cross_product) + ridge
+    beta_new[selected, dimension] <- estimated_beta
+  }
 
-    beta_new[selected, dimension] <- drop(
-      solve(
-        cross_product,
-        crossprod(Z_selected, mu_hat[, dimension])
+  fitted_mean <- predictor %*% beta_new
+
+  # Update xi only for observed responses. Missing entries retain their
+  # previous values because they do not contribute to the variational bound.
+  for (i in seq_len(N)) {
+    observed_items <- which(!is.na(resp[i, ]))
+    for (j in observed_items) {
+      loading <- a[j, ]
+      posterior_variance <- drop(
+        crossprod(loading, omega_hat[i, , ] %*% loading)
       )
+      posterior_location <-
+        sum(loading * posterior_mu[i, ]) + d0[j]
+
+      xi_hat[i, j] <- sqrt(max(
+        .Machine$double.eps,
+        posterior_location^2 + posterior_variance
+      ))
+    }
+  }
+
+  sigma_sum <- matrix(0, nrow = D, ncol = D)
+
+  for (i in seq_len(N)) {
+    residual_i <- posterior_mu[i, ] - fitted_mean[i, ]
+
+    sigma_sum <-
+      sigma_sum + omega_hat[i, , ] + tcrossprod(residual_i)
+  }
+
+  sigma_new <- sigma_sum / N
+  sigma_new <- (sigma_new + t(sigma_new)) / 2
+
+  if (N > 1L) {
+    fitted_covariance <- stats::cov(fitted_mean)
+  } else {
+    fitted_covariance <- matrix(0, nrow = D, ncol = D)
+  }
+
+  scale_variance <- diag(sigma_new + fitted_covariance)
+  if (any(!is.finite(scale_variance)) || any(scale_variance <= 0)) {
+    stop(
+      "The latent scaling variances must be finite and positive.",
+      call. = FALSE
     )
   }
 
-  # Update the residual covariance using the posterior covariance and the
-  # posterior residual outer products.
-  fitted_mean <- Z %*% beta_new
-  sigma_new <- matrix(0, nrow = D, ncol = D)
+  scale_sd <- sqrt(scale_variance)
+  scale_outer <- outer(scale_sd, scale_sd)
 
-  for (i in seq_len(N)) {
-    residual_i <- mu_hat[i, ] - fitted_mean[i, ]
-    sigma_new <-
-      sigma_new + omega_hat[i, , ] + tcrossprod(residual_i)
-  }
+  sigma_scaled <- sigma_new / scale_outer
+  sigma_scaled <- (sigma_scaled + t(sigma_scaled)) / 2
 
-  sigma_new <- sigma_new / N
-  sigma_new <- (sigma_new + t(sigma_new)) / 2
+  beta_scaled <- sweep(beta_new, 2L, scale_sd, "/")
 
   list(
     omega = omega_hat,
-    mu = mu_hat,
-    sigma = sigma_new,
+    mu = posterior_mu,
+    sigma = sigma_scaled,
     xi = xi_hat,
-    coef = beta_new
+    coef = beta_new,
+    coef2 = beta_scaled
   )
 }
 
@@ -375,7 +766,7 @@ gvem_ite_once <- function(
 #' regression coefficients and latent residual covariance matrix.
 #'
 #' @param X `N` by `p` covariate matrix.
-#' @param Y `N` by `J` binary response matrix.
+#' @param Y `N` by `J` binary response matrix with optional `NA` values.
 #' @param parTab Item parameter data frame with one row per item. For the
 #'   simple-structure format used by `sim_m1`, it must contain `a` (or `slope`),
 #'   `d` (or `b`/`difficulty`), and `dimension` (or `subtest`). A full loading
@@ -391,7 +782,6 @@ gvem_ite_once <- function(
 #' @param max_iter Maximum number of joint GVEM iterations.
 #' @param threshold Convergence threshold for the maximum absolute parameter
 #'   change in `sigma_hat` and `beta_hat`.
-#' @param ridge Nonnegative ridge constant used in the selected regressions.
 #' @param progress Logical; display a progress bar for the joint GVEM
 #'   iterations when `TRUE`.
 #' @param verbose Logical; report dimension-specific screening results and the
@@ -414,7 +804,7 @@ gvem_ite_once <- function(
 #' }
 #'
 #' @export
-MFARLR_mml<- function(
+MFARLR_mml <- function(
     X,
     Y,
     parTab,
@@ -424,7 +814,6 @@ MFARLR_mml<- function(
     xi_start = NULL,
     max_iter = 1000L,
     threshold = 1e-4,
-    ridge = 1e-6,
     progress = TRUE,
     verbose = TRUE
 ) {
@@ -461,12 +850,13 @@ MFARLR_mml<- function(
   observed_response <- Y[!is.na(Y)]
   if (any(!observed_response %in% c(0, 1))) {
     stop(
-      "The current multidimensional GVEM implementation supports only ",
-      "binary responses coded 0/1 (with optional NA).",
+      "The multidimensional GVEM implementation supports only binary ",
+      "responses coded 0/1, with optional NA.",
       call. = FALSE
     )
   }
-  if (!is.list(farlr_args) || is.null(names(farlr_args)) && length(farlr_args)) {
+  if (!is.list(farlr_args) ||
+      (is.null(names(farlr_args)) && length(farlr_args))) {
     stop("farlr_args must be a named list.", call. = FALSE)
   }
 
@@ -485,12 +875,16 @@ MFARLR_mml<- function(
   if (length(max_iter) != 1L || is.na(max_iter) || max_iter < 1L) {
     stop("max_iter must be a positive integer.", call. = FALSE)
   }
-  if (length(threshold) != 1L || !is.finite(threshold) || threshold <= 0) {
+  if (length(threshold) != 1L ||
+      !is.finite(threshold) || threshold <= 0) {
     stop("threshold must be one positive finite number.", call. = FALSE)
   }
   if (length(selection_tol) != 1L ||
       !is.finite(selection_tol) || selection_tol < 0) {
-    stop("selection_tol must be one nonnegative finite number.", call. = FALSE)
+    stop(
+      "selection_tol must be one nonnegative finite number.",
+      call. = FALSE
+    )
   }
   if (length(progress) != 1L || is.na(progress) || !is.logical(progress)) {
     stop("progress must be TRUE or FALSE.", call. = FALSE)
@@ -501,6 +895,9 @@ MFARLR_mml<- function(
 
   if (!exists("Farlr_mml", mode = "function")) {
     stop("Farlr_mml() was not found.", call. = FALSE)
+  }
+  if (!exists("gvem_ite_once", mode = "function")) {
+    stop("gvem_ite_once() was not found.", call. = FALSE)
   }
 
   dimension_fits <- vector("list", D)
@@ -517,7 +914,7 @@ MFARLR_mml<- function(
     }
   }, add = TRUE)
 
-  # Preliminary dimension-by-dimension FARLR_Debias screening.
+  # Preliminary dimension-specific FARLR_Debias screening.
   for (dimension in seq_len(D)) {
     items <- item_index[[dimension]]
     parTab_dimension <- data.frame(
@@ -559,7 +956,8 @@ MFARLR_mml<- function(
         call. = FALSE
       )
     }
-    if (is.null(names_dimension) || length(names_dimension) != ncol(Z_dimension)) {
+    if (is.null(names_dimension) ||
+        length(names_dimension) != ncol(Z_dimension)) {
       stop(
         "Dimension ", dimension,
         " does not provide valid coefficient names.",
@@ -591,6 +989,7 @@ MFARLR_mml<- function(
           call. = FALSE
         )
       }
+
       Z_dimension <- Z_dimension[, name_order, drop = FALSE]
       coefficients_dimension <- coefficients_dimension[name_order]
 
@@ -604,6 +1003,15 @@ MFARLR_mml<- function(
     }
 
     selected <- which(abs(coefficients_dimension) > selection_tol)
+    if (length(selected) == 0L) {
+      stop(
+        "No coefficient was selected for latent dimension ",
+        dimension,
+        ". Reduce selection_tol or revise the preliminary fit.",
+        call. = FALSE
+      )
+    }
+
     index[selected, dimension] <- 1L
     coefficient_matrix[selected, dimension] <-
       coefficients_dimension[selected]
@@ -622,11 +1030,13 @@ MFARLR_mml<- function(
     sigma_hat <- diag(D)
   } else {
     sigma_hat <- as.matrix(sigma_start)
-    if (!identical(dim(sigma_hat), c(D, D)) ||
+    if (!all(dim(sigma_hat) == c(D, D)) ||
         any(!is.finite(sigma_hat))) {
       stop("sigma_start must be a finite D by D matrix.", call. = FALSE)
     }
-    if (any(eigen(sigma_hat, symmetric = TRUE, only.values = TRUE)$values <= 0)) {
+    if (any(
+      eigen(sigma_hat, symmetric = TRUE, only.values = TRUE)$values <= 0
+    )) {
       stop("sigma_start must be positive definite.", call. = FALSE)
     }
   }
@@ -635,17 +1045,25 @@ MFARLR_mml<- function(
     xi_hat <- matrix(1, nrow = N, ncol = J)
   } else {
     xi_hat <- as.matrix(xi_start)
-    if (!identical(dim(xi_hat), c(N, J)) ||
+    if (!all(dim(xi_hat) == c(N, J)) ||
         any(!is.finite(xi_hat)) || any(xi_hat <= 0)) {
-      stop("xi_start must be a positive finite N by J matrix.", call. = FALSE)
+      stop(
+        "xi_start must be a positive finite N by J matrix.",
+        call. = FALSE
+      )
     }
   }
+
+  # Retain mu_hat in the iteration interface for compatibility with the
+  # original implementation. The paper-aligned E-step recomputes it directly.
+  mu_hat <- Z %*% beta_hat
+  omega_hat <- array(NA_real_, dim = c(N, D, D))
+  beta_hat_unscaled <- beta_hat
+  beta_hat_scaled <- beta_hat
 
   old_parameter <- c(sigma_hat, beta_hat)
   converged <- FALSE
   difference <- Inf
-  mu_hat <- matrix(NA_real_, nrow = N, ncol = D)
-  omega_hat <- array(NA_real_, dim = c(N, D, D))
 
   if (isTRUE(progress)) {
     message("Running joint GVEM iterations")
@@ -662,20 +1080,22 @@ MFARLR_mml<- function(
       resp = Y,
       Z = Z,
       sigma_hat = sigma_hat,
+      beta_hat = beta_hat,
       a = a,
       d0 = d,
       xi_hat = xi_hat,
       D = D,
       index = index,
-      beta_hat = beta_hat,
-      ridge = ridge
+      mu_hat = mu_hat
     )
 
     mu_hat <- iteration_result$mu
     sigma_hat <- iteration_result$sigma
     xi_hat <- iteration_result$xi
     omega_hat <- iteration_result$omega
-    beta_hat <- iteration_result$coef
+    beta_hat_unscaled <- iteration_result$coef
+    beta_hat_scaled <- iteration_result$coef2
+    beta_hat <- beta_hat_scaled
 
     new_parameter <- c(sigma_hat, beta_hat)
     difference <- max(abs(old_parameter - new_parameter))
@@ -738,3 +1158,327 @@ MFARLR_mml<- function(
   class(result) <- c("MFARLR_GVEM", "list")
   result
 }
+
+# MFARLR_mml<- function(
+    #     X,
+#     Y,
+#     parTab,
+#     farlr_args = list(),
+#     selection_tol = 0,
+#     sigma_start = NULL,
+#     xi_start = NULL,
+#     max_iter = 1000L,
+#     threshold = 1e-4,
+#     ridge = 1e-6,
+#     progress = TRUE,
+#     verbose = TRUE
+# ) {
+#   X <- as.matrix(X)
+#   Y <- as.matrix(Y)
+#
+#   if (!is.numeric(X) || any(!is.finite(X))) {
+#     stop("X must be a finite numeric matrix.", call. = FALSE)
+#   }
+#   suppressWarnings(storage.mode(Y) <- "numeric")
+#   if (nrow(Y) != nrow(X)) {
+#     stop("X and Y must have the same number of rows.", call. = FALSE)
+#   }
+#
+#   N <- nrow(Y)
+#   J <- ncol(Y)
+#   item_parameters <- multidim_item_parameters(
+#     parTab = parTab,
+#     J = J,
+#     allow_guessing = FALSE
+#   )
+#   a <- item_parameters$a
+#   d <- item_parameters$d
+#   item_index <- item_parameters$item_index
+#   D <- ncol(a)
+#   dimension_names <- item_parameters$dimension_names
+#
+#   if (nrow(a) != J || D < 1L || any(!is.finite(a))) {
+#     stop("a must be a finite J by D matrix.", call. = FALSE)
+#   }
+#   if (length(d) != J || any(!is.finite(d))) {
+#     stop("d must contain one finite intercept per item.", call. = FALSE)
+#   }
+#   observed_response <- Y[!is.na(Y)]
+#   if (any(!observed_response %in% c(0, 1))) {
+#     stop(
+#       "The current multidimensional GVEM implementation supports only ",
+#       "binary responses coded 0/1 (with optional NA).",
+#       call. = FALSE
+#     )
+#   }
+#   if (!is.list(farlr_args) || is.null(names(farlr_args)) && length(farlr_args)) {
+#     stop("farlr_args must be a named list.", call. = FALSE)
+#   }
+#
+#   protected_arguments <- c("X", "Y", "parTab", "method")
+#   duplicated_arguments <- intersect(names(farlr_args), protected_arguments)
+#   if (length(duplicated_arguments) > 0L) {
+#     stop(
+#       "Do not include these arguments in farlr_args: ",
+#       paste(duplicated_arguments, collapse = ", "),
+#       ".",
+#       call. = FALSE
+#     )
+#   }
+#
+#   max_iter <- as.integer(max_iter)
+#   if (length(max_iter) != 1L || is.na(max_iter) || max_iter < 1L) {
+#     stop("max_iter must be a positive integer.", call. = FALSE)
+#   }
+#   if (length(threshold) != 1L || !is.finite(threshold) || threshold <= 0) {
+#     stop("threshold must be one positive finite number.", call. = FALSE)
+#   }
+#   if (length(selection_tol) != 1L ||
+#       !is.finite(selection_tol) || selection_tol < 0) {
+#     stop("selection_tol must be one nonnegative finite number.", call. = FALSE)
+#   }
+#   if (length(progress) != 1L || is.na(progress) || !is.logical(progress)) {
+#     stop("progress must be TRUE or FALSE.", call. = FALSE)
+#   }
+#   if (length(verbose) != 1L || is.na(verbose) || !is.logical(verbose)) {
+#     stop("verbose must be TRUE or FALSE.", call. = FALSE)
+#   }
+#
+#   if (!exists("Farlr_mml", mode = "function")) {
+#     stop("Farlr_mml() was not found.", call. = FALSE)
+#   }
+#
+#   dimension_fits <- vector("list", D)
+#   names(dimension_fits) <- dimension_names
+#   Z <- NULL
+#   coefficient_names <- NULL
+#   coefficient_matrix <- NULL
+#   index <- NULL
+#
+#   gvem_progress <- NULL
+#   on.exit({
+#     if (!is.null(gvem_progress)) {
+#       close(gvem_progress)
+#     }
+#   }, add = TRUE)
+#
+#   # Preliminary dimension-by-dimension FARLR_Debias screening.
+#   for (dimension in seq_len(D)) {
+#     items <- item_index[[dimension]]
+#     parTab_dimension <- data.frame(
+#       a = a[items, dimension],
+#       d = d[items],
+#       c = 0
+#     )
+#
+#     fit_arguments <- c(
+#       list(
+#         X = X,
+#         Y = Y[, items, drop = FALSE],
+#         parTab = parTab_dimension,
+#         method = "FARLR_Debias"
+#       ),
+#       farlr_args
+#     )
+#
+#     fit_dimension <- do.call(Farlr_mml, fit_arguments)
+#     dimension_fits[[dimension]] <- fit_dimension
+#
+#     Z_dimension <- fit_dimension$Fan
+#     if (!is.matrix(Z_dimension)) {
+#       factor_scores <- as.matrix(fit_dimension$factor_scores)
+#       residual_covariates <- as.matrix(fit_dimension$hatU)
+#       Z_dimension <- cbind(factor_scores, residual_covariates)
+#     }
+#
+#     coefficients_dimension <- as.numeric(fit_dimension$coefficients)
+#     names_dimension <- names(fit_dimension$coefficients)
+#     if (is.null(names_dimension)) {
+#       names_dimension <- colnames(Z_dimension)
+#     }
+#
+#     if (ncol(Z_dimension) != length(coefficients_dimension)) {
+#       stop(
+#         "Dimension ", dimension,
+#         " returned incompatible design and coefficient dimensions.",
+#         call. = FALSE
+#       )
+#     }
+#     if (is.null(names_dimension) || length(names_dimension) != ncol(Z_dimension)) {
+#       stop(
+#         "Dimension ", dimension,
+#         " does not provide valid coefficient names.",
+#         call. = FALSE
+#       )
+#     }
+#     colnames(Z_dimension) <- names_dimension
+#
+#     if (dimension == 1L) {
+#       Z <- Z_dimension
+#       coefficient_names <- names_dimension
+#       coefficient_matrix <- matrix(
+#         0,
+#         nrow = ncol(Z),
+#         ncol = D,
+#         dimnames = list(coefficient_names, dimension_names)
+#       )
+#       index <- matrix(
+#         0L,
+#         nrow = ncol(Z),
+#         ncol = D,
+#         dimnames = dimnames(coefficient_matrix)
+#       )
+#     } else {
+#       name_order <- match(coefficient_names, names_dimension)
+#       if (anyNA(name_order)) {
+#         stop(
+#           "Coefficient names are inconsistent across dimensions.",
+#           call. = FALSE
+#         )
+#       }
+#       Z_dimension <- Z_dimension[, name_order, drop = FALSE]
+#       coefficients_dimension <- coefficients_dimension[name_order]
+#
+#       if (!isTRUE(all.equal(Z_dimension, Z, tolerance = 1e-8))) {
+#         stop(
+#           "The FARLR design matrices differ across dimensions. ",
+#           "Use the same X, K_hat, and factor-analysis settings in every fit.",
+#           call. = FALSE
+#         )
+#       }
+#     }
+#
+#     selected <- which(abs(coefficients_dimension) > selection_tol)
+#     index[selected, dimension] <- 1L
+#     coefficient_matrix[selected, dimension] <-
+#       coefficients_dimension[selected]
+#
+#     if (isTRUE(verbose)) {
+#       message(
+#         "Dimension ", dimension, ": selected ", length(selected),
+#         " of ", length(coefficients_dimension), " coefficients."
+#       )
+#     }
+#   }
+#
+#   beta_hat <- coefficient_matrix
+#
+#   if (is.null(sigma_start)) {
+#     sigma_hat <- diag(D)
+#   } else {
+#     sigma_hat <- as.matrix(sigma_start)
+#     if (!identical(dim(sigma_hat), c(D, D)) ||
+#         any(!is.finite(sigma_hat))) {
+#       stop("sigma_start must be a finite D by D matrix.", call. = FALSE)
+#     }
+#     if (any(eigen(sigma_hat, symmetric = TRUE, only.values = TRUE)$values <= 0)) {
+#       stop("sigma_start must be positive definite.", call. = FALSE)
+#     }
+#   }
+#
+#   if (is.null(xi_start)) {
+#     xi_hat <- matrix(1, nrow = N, ncol = J)
+#   } else {
+#     xi_hat <- as.matrix(xi_start)
+#     if (!identical(dim(xi_hat), c(N, J)) ||
+#         any(!is.finite(xi_hat)) || any(xi_hat <= 0)) {
+#       stop("xi_start must be a positive finite N by J matrix.", call. = FALSE)
+#     }
+#   }
+#
+#   old_parameter <- c(sigma_hat, beta_hat)
+#   converged <- FALSE
+#   difference <- Inf
+#   mu_hat <- matrix(NA_real_, nrow = N, ncol = D)
+#   omega_hat <- array(NA_real_, dim = c(N, D, D))
+#
+#   if (isTRUE(progress)) {
+#     message("Running joint GVEM iterations")
+#     gvem_progress <- utils::txtProgressBar(
+#       min = 0L,
+#       max = max_iter,
+#       initial = 0L,
+#       style = 3L
+#     )
+#   }
+#
+#   for (iteration in seq_len(max_iter)) {
+#     iteration_result <- gvem_ite_once(
+#       resp = Y,
+#       Z = Z,
+#       sigma_hat = sigma_hat,
+#       a = a,
+#       d0 = d,
+#       xi_hat = xi_hat,
+#       D = D,
+#       index = index,
+#       beta_hat = beta_hat
+#     )
+#
+#     mu_hat <- iteration_result$mu
+#     sigma_hat <- iteration_result$sigma
+#     xi_hat <- iteration_result$xi
+#     omega_hat <- iteration_result$omega
+#     beta_hat <- iteration_result$coef
+#
+#     new_parameter <- c(sigma_hat, beta_hat)
+#     difference <- max(abs(old_parameter - new_parameter))
+#
+#     if (isTRUE(progress)) {
+#       utils::setTxtProgressBar(gvem_progress, iteration)
+#     } else if (isTRUE(verbose)) {
+#       message("Iteration ", iteration, ": diff = ", signif(difference, 6))
+#     }
+#
+#     if (difference < threshold) {
+#       converged <- TRUE
+#       if (isTRUE(progress)) {
+#         utils::setTxtProgressBar(gvem_progress, max_iter)
+#       }
+#       break
+#     }
+#
+#     old_parameter <- new_parameter
+#   }
+#
+#   if (!is.null(gvem_progress)) {
+#     close(gvem_progress)
+#     gvem_progress <- NULL
+#   }
+#
+#   if (isTRUE(verbose)) {
+#     if (converged) {
+#       message("Converged at iteration ", iteration, ".")
+#     } else {
+#       message(
+#         "Did not converge after ", max_iter,
+#         " iterations; final diff = ", signif(difference, 6), "."
+#       )
+#     }
+#   }
+#
+#   result <- list(
+#     coefficients = beta_hat,
+#     sigma = sigma_hat,
+#     mu = mu_hat,
+#     omega = omega_hat,
+#     xi = xi_hat,
+#     index = index,
+#     Z = Z,
+#     X = X,
+#     Y = Y,
+#     parTab = parTab,
+#     response = Y,
+#     a = a,
+#     d = d,
+#     dimension_fits = dimension_fits,
+#     item_index = item_index,
+#     iterations = iteration,
+#     difference = difference,
+#     convergence = if (converged) "Converged" else "Did not converge",
+#     call = match.call()
+#   )
+#
+#   class(result) <- c("MFARLR_GVEM", "list")
+#   result
+# }
