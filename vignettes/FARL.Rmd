@@ -83,15 +83,17 @@ introduced later, when the multidimensional model is fitted.
 
 # Unidimensional FARLR
 
-`Farlr_mml()` provides a common interface for two estimators. In the paper,
-FARLR is estimated by the importance-sampling-based
-expectation-maximization-maximization (ISEMM) algorithm; this is selected in
-the R interface with `method = "FARLR_EMM"`.
+The two unidimensional FARLR estimation strategies differ in how they reduce
+the bias introduced by penalized variable selection.
 
-| Method | Main idea |
-|:--|:--|
-| `FARLR_EMM` | Uses ISEMM: one E-step followed by two M-steps. The first M-step applies the LASSO penalty for variable selection; the second removes the penalty and refits the selected active set by unpenalized optimization. |
-| `FARLR_Debias` | Uses importance-sampling-based EM (ISEM) with a debiasing step. After separating the common-factor and idiosyncratic covariate components, it corrects the LASSO shrinkage bias in the selected idiosyncratic coefficients rather than adding the second unpenalized M-step. |
+| Method | Main idea | Advantage 1 | Advantage 2 |
+|:--|:--|:--|:--|
+| `FARLR_EMM` | Uses the importance-sampling-based EMM algorithm (ISEMM). Each iteration includes an importance-sampling E-step, a penalized M-step that performs variable selection using LASSO, and a second unpenalized M-step that refits the selected active set. | Produces stable subgroup mean and variance estimates, particularly for moderate and large subgroups. | Remains comparatively robust in high-dimensional settings. |
+| `FARLR_Debias` | Uses an importance-sampling-based EM algorithm. After separating the factor and idiosyncratic components, the penalized M-step obtains LASSO estimates, followed by a debiasing correction to the idiosyncratic coefficients. | More accurately identifies covariates with truly nonzero effects. | Performs especially well for small subgroups in high-dimensional settings. |
+
+`Farlr_mml()` provides a common interface for two estimators. 
+
+### Parameters passed directly to `FARLR_mml()`
 
 Both methods evaluate candidate `lambda` values, use the same convergence
 criterion, and select `lambda` by BIC. Use `FARLR_EMM` for LASSO selection

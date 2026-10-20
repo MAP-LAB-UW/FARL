@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>FARL: An Applied Guide for Unidimensional Assessments • FARL</title>
+<title>FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment • FARL</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="FARL: An Applied Guide for Unidimensional Assessments">
+<meta property="og:title" content="FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -57,7 +57,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>FARL: An Applied Guide for Unidimensional Assessments</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>FARL: Use Factor-Augmented Regularized Latent Regression for Large-Scale Assessment</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/MAP-LAB-UW/FARL/blob/HEAD/vignettes/FARL.Rmd" class="external-link"><code>vignettes/FARL.Rmd</code></a></small>
@@ -67,56 +67,153 @@
     
     
 <div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>The <code>FARL</code> package fits factor-augmented regularized
-latent regression models for unidimensional assessments. It is designed
-for applications with many correlated background variables. The common
-variation in those variables is summarized by factor scores, while
-regularization identifies additional covariates that are useful for
-predicting the latent trait.</p>
-<p>The applied workflow has two main steps:</p>
-<ol style="list-style-type: decimal">
-<li>fit the population model with <code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code>; and</li>
-<li>generate plausible values with <code><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code>.</li>
-</ol>
-<p>Two estimation methods are available.</p>
+<p>The <code>FARL</code> package implements factor-augmented regularized
+latent regression (FARLR) for large-scale assessments. FARLR addresses
+high-dimensional, strongly dependent background variables by separating
+their common variation from covariate-specific information.
+Common-factor scores enter the latent regression, while sparse
+regularization identifies a smaller set of additional background
+variables associated with achievement.</p>
+<p>For multidimensional assessments, MFARLR extends the same strategy to
+several correlated latent traits. It estimates the regression
+coefficients and the full residual covariance jointly. This preserves
+dependence among dimensions when plausible values are generated for
+population and subgroup analyses.</p>
+<p>The package supports:</p>
+<ul>
+<li>unidimensional FARLR estimation through
+<code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code>;</li>
+<li>unidimensional PCA-based DIRE estimation through
+<code><a href="../reference/Dire_mml.html">Dire_mml()</a></code>;</li>
+<li>multidimensional FARLR-GVEM estimation through
+<code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code>;</li>
+<li>multidimensional DIRE estimation through <code><a href="../reference/MDIRE_mml.html">MDIRE_mml()</a></code>;
+and</li>
+<li>plausible-value generation for all fitted models.</li>
+</ul>
+<p>This vignette first presents the unidimensional workflow and then the
+multidimensional workflow. The emphasis is on preparing data, fitting
+models, interpreting returned objects, generating plausible values, and
+conducting secondary analyses rather than on mathematical
+derivations.</p>
+</div>
+<div class="section level2">
+<h2 id="installation-and-loading">Installation and loading<a class="anchor" aria-label="anchor" href="#installation-and-loading"></a>
+</h2>
+<p>The development version can be installed with:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"devtools"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span></span>
+<span>  <span class="st">"MAP-LAB-UW/FARL"</span>,</span>
+<span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">torch</span><span class="fu">::</span><span class="fu"><a href="https://torch.mlverse.org/docs/reference/install_torch.html" class="external-link">install_torch</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://MAP-LAB-UW.github.io/FARL/" class="external-link">FARL</a></span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="common-data-interface">Common data interface<a class="anchor" aria-label="anchor" href="#common-data-interface"></a>
+</h2>
+<p>The main fitting functions use a common set of data objects.</p>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Function</th>
+<th align="center">Covariates</th>
+<th align="center">Responses</th>
+<th align="center">Item parameters</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code></td>
+<td align="center"><code>X</code></td>
+<td align="center"><code>Y</code></td>
+<td align="center"><code>parTab</code></td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code></td>
+<td align="center"><code>X</code></td>
+<td align="center"><code>Y</code></td>
+<td align="center"><code>parTab</code></td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/MDIRE_mml.html">MDIRE_mml()</a></code></td>
+<td align="center"><code>X</code></td>
+<td align="center"><code>Y</code></td>
+<td align="center"><code>parTab</code></td>
+</tr>
+</tbody>
+</table>
+<p>Rows of <code>X</code> and <code>Y</code> must refer to the same
+respondents, and rows of <code>parTab</code> must follow the item-column
+order in <code>Y</code>. The unidimensional section first shows how to
+construct <code>parTab</code>. The additional MFARLR control object is
+introduced later, when the multidimensional model is fitted.</p>
+</div>
+<div class="section level2">
+<h2 id="unidimensional-farlr">Unidimensional FARLR<a class="anchor" aria-label="anchor" href="#unidimensional-farlr"></a>
+</h2>
+<p>The two unidimensional FARLR estimation strategies differ in how they
+reduce the bias introduced by penalized variable selection.</p>
 <table class="table">
 <colgroup>
-<col width="50%">
-<col width="50%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
 </colgroup>
 <thead><tr class="header">
 <th align="left">Method</th>
-<th align="left">When to use it</th>
+<th align="left">Main idea</th>
+<th align="left">Advantage 1</th>
+<th align="left">Advantage 2</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="left"><code>FARLR_EMM</code></td>
-<td align="left">Use when the goal is a sparse model estimated through
-the iterative regularized procedure.</td>
+<td align="left">Uses the importance-sampling-based EMM algorithm
+(ISEMM). Each iteration includes an importance-sampling E-step, a
+penalized M-step that performs variable selection using LASSO, and a
+second unpenalized M-step that refits the selected active set.</td>
+<td align="left">Produces stable subgroup mean and variance estimates,
+particularly for moderate and large subgroups.</td>
+<td align="left">Remains comparatively robust in high-dimensional
+settings.</td>
 </tr>
 <tr class="even">
 <td align="left"><code>FARLR_Debias</code></td>
-<td align="left">Use when the goal is variable selection followed by a
-correction of regularization shrinkage. This is a useful default for
-reporting coefficient estimates.</td>
+<td align="left">Uses an importance-sampling-based EM algorithm. After
+separating the factor and idiosyncratic components, the penalized M-step
+obtains LASSO estimates, followed by a debiasing correction to the
+idiosyncratic coefficients.</td>
+<td align="left">More accurately identifies covariates with truly
+nonzero effects.</td>
+<td align="left">Performs especially well for small subgroups in
+high-dimensional settings.</td>
 </tr>
 </tbody>
 </table>
-<p>The examples below focus on data preparation, function calls, output
-interpretation, and plausible-value analysis rather than algorithmic
-details.</p>
+<p><code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code> provides a common interface for two
+estimators.</p>
+<div class="section level4">
+<h4 id="parameters-passed-directly-to-farlr_mml">Parameters passed directly to <code>FARLR_mml()</code><a class="anchor" aria-label="anchor" href="#parameters-passed-directly-to-farlr_mml"></a>
+</h4>
+<p>Both methods evaluate candidate <code>lambda</code> values, use the
+same convergence criterion, and select <code>lambda</code> by BIC. Use
+<code>FARLR_EMM</code> for LASSO selection followed by active-set
+refitting, and <code>FARLR_Debias</code> when explicit correction of
+regularization shrinkage is desired.</p>
+<p>The examples in this section use <code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code> to fit the
+model and <code><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code> to generate plausible values.</p>
 </div>
-<div class="section level2">
-<h2 id="load-farl">Load FARL<a class="anchor" aria-label="anchor" href="#load-farl"></a>
-</h2>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://MAP-LAB-UW.github.io/FARL/" class="external-link">FARL</a></span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="prepare-the-data">Prepare the data<a class="anchor" aria-label="anchor" href="#prepare-the-data"></a>
-</h2>
+<div class="section level3">
+<h3 id="prepare-the-data">Prepare the data<a class="anchor" aria-label="anchor" href="#prepare-the-data"></a>
+</h3>
 <p><code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code> uses three required data objects.</p>
 <table class="table">
 <colgroup>
@@ -155,13 +252,163 @@ column order of <code>Y</code>.</td>
 three-category GPCM items. Binary responses must be coded 0/1, and GPCM
 responses must be coded 0/1/2. The package determines item type from the
 supplied item parameters.</p>
-<div class="section level3">
-<h3 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a>
-</h3>
+<div class="section level4">
+<h4 id="construct-a-unidimensional-partab">Construct a unidimensional <code>parTab</code><a class="anchor" aria-label="anchor" href="#construct-a-unidimensional-partab"></a>
+</h4>
+<p><code>parTab</code> is an item-level data frame. It must have exactly
+one row for every column of <code>Y</code>, in the same order. The
+<code>sim_a1</code> table can be constructed as follows.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">item_difficulty</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="fl">0.68394525</span>, <span class="fl">0.92141771</span>, <span class="fl">1.57513353</span>,</span>
+<span>  <span class="fl">1.63897827</span>, <span class="fl">0.06180150</span>, <span class="fl">0.02206284</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">item_slope</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="fl">0.7808753</span>, <span class="fl">1.0839744</span>, <span class="fl">0.6168007</span>,</span>
+<span>  <span class="fl">1.1808368</span>, <span class="fl">0.8086742</span>, <span class="fl">1.0941187</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">parTab_a1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  item <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">item_slope</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="va">item_difficulty</span>,</span>
+<span>  a <span class="op">=</span> <span class="va">item_slope</span>,</span>
+<span>  c <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  ItemID <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"item"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">item_slope</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  test <span class="op">=</span> <span class="st">"comp"</span>,</span>
+<span>  subtest <span class="op">=</span> <span class="st">"main"</span>,</span>
+<span>  slope <span class="op">=</span> <span class="va">item_slope</span>,</span>
+<span>  difficulty <span class="op">=</span> <span class="va">item_difficulty</span>,</span>
+<span>  guessing <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  D <span class="op">=</span> <span class="fl">1L</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">parTab_a1</span></span>
+<span><span class="co"># item b a c ItemID test subtest slope difficulty</span></span>
+<span><span class="co"># 1 0.68394525  0.7808753   0   item1   comp    main    0.7808753   0.68394525  </span></span>
+<span><span class="co"># 2 0.92141771  1.0839744   0   item2   comp    main    1.0839744   0.92141771  </span></span>
+<span><span class="co"># 3 1.57513353  0.6168007   0   item3   comp    main    0.6168007   1.57513353  </span></span>
+<span><span class="co"># 4 1.63897827  1.1808368   0   item4   comp    main    1.1808368   1.63897827  </span></span>
+<span><span class="co"># 5 0.06180150  0.8086742   0   item5   comp    main    0.8086742   0.06180150  </span></span>
+<span><span class="co"># 6 0.02206284  1.0941187   0   item6   comp    main    1.0941187   0.02206284</span></span></code></pre></div>
+<p>The columns have the following roles.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Column</th>
+<th align="left">Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>item</code></td>
+<td align="left">Item sequence number. Row order must match the columns
+of <code>Y</code>.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>a</code></td>
+<td align="left">Item discrimination or slope used by
+<code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code>.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>b</code></td>
+<td align="left">Item difficulty. FARL converts it internally to the
+intercept needed by the response model.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>c</code></td>
+<td align="left">Guessing parameter. Set it to zero for 1PL/2PL items
+and to a value between zero and one for 3PL items.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>ItemID</code></td>
+<td align="left">Readable item identifier. It should be unique.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>test</code></td>
+<td align="left">Test label retained as item metadata.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>subtest</code></td>
+<td align="left">Subtest label retained as item metadata. For this
+unidimensional example all items use <code>"main"</code>.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>slope</code></td>
+<td align="left">Descriptive duplicate of <code>a</code>, retained for
+compatibility with other interfaces.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>difficulty</code></td>
+<td align="left">Descriptive duplicate of <code>b</code>.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>guessing</code></td>
+<td align="left">Descriptive duplicate of <code>c</code>.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>D</code></td>
+<td align="left">Unidimensional metadata flag. It is <code>1</code> for
+every item in this example.</td>
+</tr>
+</tbody>
+</table>
+<p>For <code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code>, the essential columns in this 2PL
+example are <code>a</code>, <code>b</code>, and <code>c</code>. The
+remaining columns provide identifiers and compatibility metadata. If
+intercepts are already available, supply <code>d</code> instead of
+<code>b</code>.</p>
+<p>The required item parameters change with item type:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Item type</th>
+<th align="left">Required information in <code>parTab</code>
+</th>
+<th align="left">Response coding</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">1PL/2PL</td>
+<td align="left">
+<code>a</code>, either <code>b</code> or
+<code>d</code>, and <code>c = 0</code>
+</td>
+<td align="left">0/1, with optional <code>NA</code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">3PL</td>
+<td align="left">
+<code>a</code>, either <code>b</code> or
+<code>d</code>, and a nonzero <code>c</code> between 0 and 1</td>
+<td align="left">0/1, with optional <code>NA</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Three-category GPCM</td>
+<td align="left">
+<code>a</code>, <code>b1</code>, and <code>b2</code>;
+<code>c</code> may be zero or omitted</td>
+<td align="left">0/1/2, with optional <code>NA</code>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level4">
+<h4 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a>
+</h4>
 <p><code>sim_a1</code> contains 300 respondents, 100 background
 variables, and six binary 2PL items. The true latent trait is retained
 only for simulation diagnostics.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
@@ -171,27 +418,56 @@ only for simulation diagnostics.</p>
 <span><span class="co"># [1] 300   6</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co">#      i001 i002 i003 i004 i005 i006</span></span>
+<span><span class="co"># [1,]    1    1    0    0    0    1</span></span>
+<span><span class="co"># [2,]    0    1    0    1    0    0</span></span>
+<span><span class="co"># [3,]    1    0    1    0    0    1</span></span>
+<span><span class="co"># [4,]    0    0    0    0    1    1</span></span>
+<span><span class="co"># [5,]    0    0    0    0    0    1</span></span>
+<span><span class="co"># [6,]    0    0    0    0    1    1</span></span>
+<span>     </span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="va">sim_a1</span><span class="op">$</span><span class="va">parTab</span></span></code></pre></div>
+<span><span class="co">#      [,1] [,2] [,3] [,4] [,5]       [,6]</span></span>
+<span><span class="co"># [1,]    0    1    0    1    0  0.2837093</span></span>
+<span><span class="co"># [2,]    1    1    1    1    1  0.9718186</span></span>
+<span><span class="co"># [3,]    1    1    1    1    1  1.2179341</span></span>
+<span><span class="co"># [4,]    1    1    1    1    1  1.7088599</span></span>
+<span><span class="co"># [5,]    0    0    0    0    0 -3.5649492</span></span>
+<span><span class="co"># [6,]    1    1    1    1    1  1.2663585</span></span>
+<span></span>
+<span><span class="va">sim_a1</span><span class="op">$</span><span class="va">parTab</span></span>
+<span><span class="co"># item b a c ItemID test subtest slope difficulty</span></span>
+<span><span class="co"># 1 0.68394525  0.7808753   0   item1   comp    main    0.7808753   0.68394525  </span></span>
+<span><span class="co"># 2 0.92141771  1.0839744   0   item2   comp    main    1.0839744   0.92141771  </span></span>
+<span><span class="co"># 3 1.57513353  0.6168007   0   item3   comp    main    0.6168007   1.57513353  </span></span>
+<span><span class="co"># 4 1.63897827  1.1808368   0   item4   comp    main    1.1808368   1.63897827  </span></span>
+<span><span class="co"># 5 0.06180150  0.8086742   0   item5   comp    main    0.8086742   0.06180150  </span></span>
+<span><span class="co"># 6 0.02206284  1.0941187   0   item6   comp    main    1.0941187   0.02206284</span></span></code></pre></div>
 <p>Before fitting the model, verify row alignment, item alignment,
 response codes, and missingness.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">parTab</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># [1] 0</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">Y</span>, useNA <span class="op">=</span> <span class="st">"ifany"</span><span class="op">)</span></span>
+<span><span class="co">#    0    1 </span></span>
+<span><span class="co"># 1155  645 </span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span>, <span class="fl">2</span>, <span class="va">sd</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
+<span><span class="co"># 0.4992  0.5006  0.5412  0.7574  1.0498  1.5723 </span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="choose-primary-covariates">Choose primary covariates<a class="anchor" aria-label="anchor" href="#choose-primary-covariates"></a>
-</h3>
+<div class="section level4">
+<h4 id="choose-primary-covariates">Choose primary covariates<a class="anchor" aria-label="anchor" href="#choose-primary-covariates"></a>
+</h4>
 <p>The <code>main</code> argument identifies covariates that must remain
 in the population model. These variables are not removed by penalized
 selection. Supply their column indices in <code>X</code>.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">main</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">15</span>, <span class="fl">29</span>, <span class="fl">45</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">main_names</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -200,17 +476,18 @@ selection. Supply their column indices in <code>X</code>.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span><span class="op">[</span><span class="va">main</span><span class="op">]</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">main_names</span></span></code></pre></div>
+<span><span class="va">main_names</span></span>
+<span><span class="co"># [1] "X1"  "X2"  "X15" "X29" "X45"</span></span></code></pre></div>
 <p>Use <code>main = integer(0)</code> when every original covariate may
 be selected or excluded by regularization.</p>
 </div>
 </div>
-<div class="section level2">
-<h2 id="fit-farl">Fit FARL<a class="anchor" aria-label="anchor" href="#fit-farl"></a>
-</h2>
 <div class="section level3">
-<h3 id="main-fitting-arguments">Main fitting arguments<a class="anchor" aria-label="anchor" href="#main-fitting-arguments"></a>
+<h3 id="fit-farl">Fit FARL<a class="anchor" aria-label="anchor" href="#fit-farl"></a>
 </h3>
+<div class="section level4">
+<h4 id="main-fitting-arguments">Main fitting arguments<a class="anchor" aria-label="anchor" href="#main-fitting-arguments"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -295,11 +572,12 @@ analysis, inspect convergence and check whether results remain stable
 with larger Monte Carlo sample sizes and a broader <code>lambda</code>
 grid.</p>
 </div>
-<div class="section level3">
-<h3 id="fit-farlr-debias">Fit FARLR-Debias<a class="anchor" aria-label="anchor" href="#fit-farlr-debias"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_debias</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<div class="section level4">
+<h4 id="fit-farlr-debias">Fit FARLR-Debias<a class="anchor" aria-label="anchor" href="#fit-farlr-debias"></a>
+</h4>
+<p>This fit uses ISEM together with the paper’s debiasing step.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_debias</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
 <span>  <span class="va">sim_a1</span>,</span>
 <span>  <span class="fu"><a href="../reference/Farlr_mml.html">Farlr_mml</a></span><span class="op">(</span></span>
 <span>    X <span class="op">=</span> <span class="va">X</span>,</span>
@@ -313,15 +591,17 @@ grid.</p>
 <span>    seed <span class="op">=</span> <span class="fl">2026</span>,</span>
 <span>    progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span><span class="co">#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co">#  |==============================================================================| 100%</span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="fit-farlr-emm">Fit FARLR-EMM<a class="anchor" aria-label="anchor" href="#fit-farlr-emm"></a>
-</h3>
-<p>The input interface is the same; only <code>method</code>
-changes.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_emm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<div class="section level4">
+<h4 id="fit-farlr-emm">Fit FARLR-EMM<a class="anchor" aria-label="anchor" href="#fit-farlr-emm"></a>
+</h4>
+<p>This fit uses the paper’s ISEMM procedure. The input interface is the
+same; only <code>method</code> changes.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_emm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
 <span>  <span class="va">sim_a1</span>,</span>
 <span>  <span class="fu"><a href="../reference/Farlr_mml.html">Farlr_mml</a></span><span class="op">(</span></span>
 <span>    X <span class="op">=</span> <span class="va">X</span>,</span>
@@ -335,12 +615,14 @@ changes.</p>
 <span>    seed <span class="op">=</span> <span class="fl">2026</span>,</span>
 <span>    progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span><span class="co">#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co">#  |==============================================================================| 100%</span></span></code></pre></div>
 </div>
 </div>
-<div class="section level2">
-<h2 id="examine-a-fitted-farl-model">Examine a fitted FARL model<a class="anchor" aria-label="anchor" href="#examine-a-fitted-farl-model"></a>
-</h2>
+<div class="section level3">
+<h3 id="examine-a-fitted-farl-model">Examine a fitted FARL model<a class="anchor" aria-label="anchor" href="#examine-a-fitted-farl-model"></a>
+</h3>
 <p>The fitted object contains the coefficient estimates together with
 the factor-adjusted design, item information, scaling values, and
 fitting diagnostics needed for later plausible-value generation.</p>
@@ -420,32 +702,39 @@ responses retained for compatibility and PV generation.</td>
 </tr>
 </tbody>
 </table>
-<div class="section level3">
-<h3 id="check-method-and-convergence">Check method and convergence<a class="anchor" aria-label="anchor" href="#check-method-and-convergence"></a>
-</h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_debias</span><span class="op">$</span><span class="va">method</span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">K_hat</span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">lambda</span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">LogLik</span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">Convergence</span></span>
+<div class="section level4">
+<h4 id="check-method-and-convergence">Check method and convergence<a class="anchor" aria-label="anchor" href="#check-method-and-convergence"></a>
+</h4>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">method</span></span>
+<span><span class="co"># [1] "FARLR_Debias"</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">K_hat</span></span>
+<span><span class="co"># [1] 2</span></span>
+<span></span>
+<span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">lambda</span></span>
+<span><span class="co"># [1] 0.05</span></span>
+<span></span>
+<span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">LogLik</span></span>
+<span><span class="co"># [1] -281.1571</span></span>
+<span></span>
+<span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">Convergence</span></span>
+<span><span class="co"># [1] "Converged"</span></span></code></pre></div>
 <p>If the selected <code>lambda</code> is the smallest or largest
 candidate, extend the grid and refit. If the model does not converge,
 increase <code>iter.max</code>, review the input variables, and assess
 stability across seeds and Monte Carlo settings.</p>
 </div>
-<div class="section level3">
-<h3 id="summarize-coefficients">Summarize coefficients<a class="anchor" aria-label="anchor" href="#summarize-coefficients"></a>
-</h3>
+<div class="section level4">
+<h4 id="summarize-coefficients">Summarize coefficients<a class="anchor" aria-label="anchor" href="#summarize-coefficients"></a>
+</h4>
 <p>Printing every coefficient is difficult when <code>X</code> is wide.
 A compact table of the largest coefficients is usually more
 informative.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">coefficient_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  predictor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>,</span>
-<span>  coefficient <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>,</span>
+<span>  predictor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>,</span>
+<span>  coefficient <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>,</span>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -459,92 +748,81 @@ informative.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">coefficient_table</span><span class="op">$</span><span class="va">coefficient</span><span class="op">)</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span><span class="op">]</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">coefficient_table</span>, <span class="fl">15L</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">coefficient_table</span>, <span class="fl">15L</span><span class="op">)</span></span>
+<span><span class="co"># predictor coefficient source</span></span>
+<span><span class="co"># 73    X71 0.6400820   Original covariate  </span></span>
+<span><span class="co"># 2 FS2 0.5169816   Common factor   </span></span>
+<span><span class="co"># 78    X76 0.4347478   Original covariate  </span></span>
+<span><span class="co"># 91    X89 -0.4185053  Original covariate  </span></span>
+<span><span class="co"># 90    X88 0.3937220   Original covariate  </span></span>
+<span><span class="co"># 26    X24 -0.3324180  Original covariate  </span></span>
+<span><span class="co"># 37    X35 0.2714997   Original covariate  </span></span>
+<span><span class="co"># 81    X79 -0.2629103  Original covariate  </span></span>
+<span><span class="co"># 61    X59 -0.2584331  Original covariate  </span></span>
+<span><span class="co"># 30    X28 0.2282416   Original covariate</span></span></code></pre></div>
 <p>A positive coefficient indicates that higher values of the predictor
 are associated with a higher population mean for the latent trait,
 holding the other included predictors constant. Coefficients describe
 associations and should not be interpreted causally.</p>
-<p>To inspect variables retained by the fitted model, apply a small
-numerical tolerance rather than comparing floating-point values directly
-with zero.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">selection_tolerance</span> <span class="op">&lt;-</span> <span class="fl">1e-8</span></span>
-<span></span>
-<span><span class="va">selected_coefficients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span>
-<span>  <span class="va">coefficient_table</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">coefficient</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">selection_tolerance</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">selected_coefficients</span></span></code></pre></div>
 <p>The common-factor scores summarize shared variation across
 <code>X</code>. Covariate coefficients represent information that
 remains useful after the factor adjustment. Primary variables supplied
 through <code>main</code> should be interpreted alongside the selected
 covariates rather than as a separate model.</p>
 </div>
-<div class="section level3">
-<h3 id="interpret-residual-variation">Interpret residual variation<a class="anchor" aria-label="anchor" href="#interpret-residual-variation"></a>
-</h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_debias</span><span class="op">$</span><span class="va">sigma</span></span>
-<span><span class="va">fit_emm</span><span class="op">$</span><span class="va">sigma</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpret-residual-variation">Interpret residual variation<a class="anchor" aria-label="anchor" href="#interpret-residual-variation"></a>
+</h4>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">sigma</span>,<span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co"># [1] 0.62</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_emm</span><span class="op">$</span><span class="va">sigma</span>,<span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co"># [1] 0.725</span></span></code></pre></div>
 <p><code>sigma</code> is a residual standard deviation, not a variance.
 A smaller value indicates that the fitted population model leaves less
 latent-trait variation unexplained. Comparisons are most useful when the
 same data, item parameters, and latent scale are used.</p>
 </div>
-<div class="section level3">
-<h3 id="inspect-the-factor-adjusted-design">Inspect the factor-adjusted design<a class="anchor" aria-label="anchor" href="#inspect-the-factor-adjusted-design"></a>
-</h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">factor_scores</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">factor_scores</span><span class="op">)</span></span>
+<div class="section level4">
+<h4 id="inspect-the-factor-adjusted-design">Inspect the factor-adjusted design<a class="anchor" aria-label="anchor" href="#inspect-the-factor-adjusted-design"></a>
+</h4>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">factor_scores</span><span class="op">)</span></span>
+<span><span class="co"># [1] 300   2</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">hatU</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">Fan</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">Fan</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">factor_scores</span>,<span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#         FS1    FS2</span></span>
+<span><span class="co"># [1,] -0.693 -0.710</span></span>
+<span><span class="co"># [2,]  0.486  0.773</span></span>
+<span><span class="co"># [3,] -1.008  0.773</span></span>
+<span><span class="co"># [4,]  0.693  1.312</span></span>
+<span><span class="co"># [5,] -1.466 -2.770</span></span>
+<span><span class="co"># [6,]  0.638  1.147</span></span>
+<span>            </span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">hatU</span><span class="op">)</span></span>
+<span><span class="co"># [1] 300 100</span></span>
 <span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">X_center</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span></span>
-<span><span class="va">fit_debias</span><span class="op">$</span><span class="va">X_scale</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_debias</span><span class="op">$</span><span class="va">Fan</span><span class="op">)</span></span>
+<span><span class="co"># [1] 300 102</span></span></code></pre></div>
 <p><code>FARLR_Debias</code> uses <code>Fan</code>, which combines
 common-factor scores and factor-adjusted covariates. These stored
-objects are especially important when applying the model to new data or
-diagnosing unexpected coefficients.</p>
+objects are useful for reconstructing the fitted design during
+plausible-value generation and for diagnosing unexpected coefficients in
+the fitted sample.</p>
+</div>
 </div>
 <div class="section level3">
-<h3 id="compare-the-two-estimation-methods">Compare the two estimation methods<a class="anchor" aria-label="anchor" href="#compare-the-two-estimation-methods"></a>
+<h3 id="generate-plausible-values">Generate plausible values<a class="anchor" aria-label="anchor" href="#generate-plausible-values"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">method_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_emm</span><span class="op">$</span><span class="va">method</span>, <span class="va">fit_debias</span><span class="op">$</span><span class="va">method</span><span class="op">)</span>,</span>
-<span>  lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_emm</span><span class="op">$</span><span class="va">lambda</span>, <span class="va">fit_debias</span><span class="op">$</span><span class="va">lambda</span><span class="op">)</span>,</span>
-<span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_emm</span><span class="op">$</span><span class="va">sigma</span>, <span class="va">fit_debias</span><span class="op">$</span><span class="va">sigma</span><span class="op">)</span>,</span>
-<span>  nonzero_coefficients <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">fit_emm</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">selection_tolerance</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">fit_debias</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">selection_tolerance</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">method_comparison</span></span></code></pre></div>
-<p>Different coefficient counts are expected because the two methods
-perform estimation and shrinkage correction differently. Method choice
-should be made before inspecting the final results and should be checked
-through sensitivity analyses when substantive conclusions depend on a
-small set of variables.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="generate-plausible-values">Generate plausible values<a class="anchor" aria-label="anchor" href="#generate-plausible-values"></a>
-</h2>
 <p><code><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code> combines the fitted population model
 with each respondent’s observed item responses. It returns plausible
 values together with posterior summaries that are useful for checking
 the generated draws. Plausible values are intended for population and
 subgroup analyses, not for reporting an individual’s single score.</p>
-<div class="section level3">
-<h3 id="plausible-value-arguments">Plausible-value arguments<a class="anchor" aria-label="anchor" href="#plausible-value-arguments"></a>
-</h3>
+<div class="section level4">
+<h4 id="plausible-value-arguments">Plausible-value arguments<a class="anchor" aria-label="anchor" href="#plausible-value-arguments"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -607,29 +885,30 @@ posterior summaries in a list.</td>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="draw-plausible-values">Draw plausible values<a class="anchor" aria-label="anchor" href="#draw-plausible-values"></a>
-</h3>
+<div class="section level4">
+<h4 id="draw-plausible-values">Draw plausible values<a class="anchor" aria-label="anchor" href="#draw-plausible-values"></a>
+</h4>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">farl_pvs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs</a></span><span class="op">(</span></span>
-<span>  mmlcomp <span class="op">=</span> <span class="va">fit_debias</span>,</span>
+<span>  mmlcomp <span class="op">=</span> <span class="va">mmlcomp_debias</span>,</span>
 <span>  npv <span class="op">=</span> <span class="fl">10L</span>,</span>
 <span>  n_quad <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>  theta_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">4</span>, <span class="fl">4</span><span class="op">)</span>,</span>
 <span>  adaptive_range <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  range_sd <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  range_sd <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">2026</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  return_details <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span><span class="co">#  |==============================================================================| 100%</span></span></code></pre></div>
 <p>For simulation studies, <code>theta = sim_a1$theta</code> may be
 added to report the difference between the average posterior estimate
 and the average true trait. It should not be supplied in an empirical
 analysis.</p>
 </div>
-<div class="section level3">
-<h3 id="examine-plausible-value-output">Examine plausible-value output<a class="anchor" aria-label="anchor" href="#examine-plausible-value-output"></a>
-</h3>
+<div class="section level4">
+<h4 id="examine-plausible-value-output">Examine plausible-value output<a class="anchor" aria-label="anchor" href="#examine-plausible-value-output"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -680,14 +959,14 @@ model.</td>
 </tbody>
 </table>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">EAP_estimates</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">EAP_variance</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">EAP_estimates</span>, <span class="va">farl_pvs</span><span class="op">$</span><span class="va">prior_mean</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span>
+<span><span class="co"># id _farl1 _farl2 _farl3 _farl4 _farl5</span></span>
+<span><span class="co"># 1 0.4415057   -0.39299729 0.24264142  0.1258383   -0.17760220 </span></span>
+<span><span class="co"># 2 0.2174657   0.05058925  0.31419779  0.3119294   -0.89014627 </span></span>
+<span><span class="co"># 3 -0.2252654  -0.13906095 -0.78423791 0.7180437   -0.02715238 </span></span>
+<span><span class="co"># 4 -0.0520972  0.30991841  0.09067852  0.3965440   0.31826952  </span></span>
+<span><span class="co"># 5 -2.1700373  -1.07371436 -2.19664464 -1.3406977  -1.98672013 </span></span>
+<span><span class="co"># 6 -0.5599810  -0.05541882 -0.43469715 0.2878315   -0.28505926 </span></span></code></pre></div>
 <p>Large posterior variances identify respondents whose response
 patterns provide less information about the latent trait. Differences
 between <code>prior_mean</code> and <code>EAP_estimates</code> show how
@@ -695,90 +974,38 @@ the observed item responses update predictions from the background
 variables.</p>
 </div>
 </div>
-<div class="section level2">
-<h2 id="use-plausible-values-in-secondary-analyses">Use plausible values in secondary analyses<a class="anchor" aria-label="anchor" href="#use-plausible-values-in-secondary-analyses"></a>
-</h2>
-<p>Run the intended analysis separately for every plausible-value column
-and then combine the resulting estimates and uncertainty. Do not average
-the plausible values first and analyze that single average as if it were
-an observed score.</p>
-<p>The following helpers summarize the overall spread across a set of
-plausible values. <code>variance.sample()</code> averages the
-respondent-level variance across PV datasets, while
-<code>variance.cal()</code> also accounts for variation among the PV
-dataset means.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">variance.sample</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">theta_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">theta_matrix</span>, <span class="fl">2L</span>, <span class="fu">stats</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">var</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">variance.cal</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">theta_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span></span>
-<span>  <span class="va">number_of_pvs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span></span>
-<span>  <span class="va">within_variance</span> <span class="op">&lt;-</span> <span class="fu">variance.sample</span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span></span>
-<span>  <span class="va">between_variance</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">var</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">theta_matrix</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">within_variance</span> <span class="op">+</span></span>
-<span>    <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fl">1</span> <span class="op">/</span> <span class="va">number_of_pvs</span><span class="op">)</span> <span class="op">*</span> <span class="va">between_variance</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">pv_matrix</span> <span class="op">&lt;-</span> <span class="va">farl_pvs</span><span class="op">$</span><span class="va">data</span></span>
-<span></span>
-<span><span class="fu">variance.sample</span><span class="op">(</span><span class="va">pv_matrix</span><span class="op">)</span></span>
-<span><span class="fu">variance.cal</span><span class="op">(</span><span class="va">pv_matrix</span><span class="op">)</span></span></code></pre></div>
-<p>For a substantive regression, repeat the model for each plausible
-value and store the coefficient and its sampling variance.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">analysis_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  outcome <span class="op">=</span> <span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
-<span>  group <span class="op">=</span> <span class="va">sim_a1</span><span class="op">$</span><span class="va">X</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pv_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">farl_pvs</span><span class="op">$</span><span class="va">data</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">pv_index</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">model_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/transform.html" class="external-link">transform</a></span><span class="op">(</span></span>
-<span>      <span class="va">analysis_data</span>,</span>
-<span>      plausible_value <span class="op">=</span> <span class="va">farl_pvs</span><span class="op">$</span><span class="va">data</span><span class="op">[</span>, <span class="va">pv_index</span><span class="op">]</span></span>
-<span>    <span class="op">)</span></span>
-<span></span>
-<span>    <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">plausible_value</span> <span class="op">~</span> <span class="va">group</span>, data <span class="op">=</span> <span class="va">model_data</span><span class="op">)</span></span>
-<span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>      pv <span class="op">=</span> <span class="va">pv_index</span>,</span>
-<span>      estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span><span class="op">[</span><span class="st">"group"</span><span class="op">]</span>,</span>
-<span>      sampling_variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span><span class="op">[</span><span class="st">"group"</span>, <span class="st">"group"</span><span class="op">]</span>,</span>
-<span>      row.names <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pv_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">pv_results</span><span class="op">)</span></span>
-<span><span class="va">pv_results</span></span></code></pre></div>
-<p>These stored estimates can then be combined using the
-multiple-imputation pooling procedure appropriate for the target
-analysis.</p>
-</div>
-<div class="section level2">
-<h2 id="mixed-3pl-and-gpcm-responses">Mixed 3PL and GPCM responses<a class="anchor" aria-label="anchor" href="#mixed-3pl-and-gpcm-responses"></a>
-</h2>
+<div class="section level3">
+<h3 id="mixed-3pl-and-gpcm-responses">Mixed 3PL and GPCM responses<a class="anchor" aria-label="anchor" href="#mixed-3pl-and-gpcm-responses"></a>
+</h3>
 <p>The same FARL workflow applies when the assessment contains both
 binary 3PL items and three-category GPCM items. <code>sim_a2</code>
 demonstrates this case.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="co"># [1] 300 100</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co"># [1] 300   6</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">sim_a2</span><span class="op">$</span><span class="va">itemtype</span><span class="op">)</span></span>
+<span><span class="co"># 3PL gpcm </span></span>
+<span><span class="co">#  3    3 </span></span>
 <span></span>
 <span><span class="va">sim_a2</span><span class="op">$</span><span class="va">parTab</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"ItemID"</span>, <span class="st">"itemtype"</span>, <span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"b1"</span>, <span class="st">"b2"</span></span>
-<span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co"># ItemID itemtype a b c b1 b2</span></span>
+<span><span class="co"># item1 3PL 0.7808753   0.6839453   0.2364617   NA  NA</span></span>
+<span><span class="co"># item2 gpcm    1.0839744   NA  0.0000000   0.4103240   1.2342899</span></span>
+<span><span class="co"># item3 3PL 0.6168007   0.9214177   0.1773176   NA  NA</span></span>
+<span><span class="co"># item4 gpcm    1.1808368   NA  0.0000000   -1.1282366  -0.0933918</span></span>
+<span><span class="co"># item5 3PL 0.8086742   1.5751335   0.1758274   NA  NA</span></span>
+<span><span class="co"># item6 gpcm    1.0941187   NA  0.0000000   -0.1558467  0.7680919</span></span></code></pre></div>
 <p>Fit the model and generate PVs using the same public functions.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
 <span>  <span class="va">sim_a2</span>,</span>
 <span>  <span class="fu"><a href="../reference/Farlr_mml.html">Farlr_mml</a></span><span class="op">(</span></span>
 <span>    X <span class="op">=</span> <span class="va">X</span>,</span>
@@ -789,25 +1016,37 @@ demonstrates this case.</p>
 <span>    seed <span class="op">=</span> <span class="fl">2026</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
+<span><span class="co">#  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co">#  |==============================================================================| 100%</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">fit_mixed</span><span class="op">$</span><span class="va">item_type</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">mmlcomp_mixed</span><span class="op">$</span><span class="va">item_type</span><span class="op">)</span></span>
+<span><span class="co"># 3pl gpcm </span></span>
+<span><span class="co">#  3    3</span></span>
 <span></span>
 <span><span class="va">pvs_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs</a></span><span class="op">(</span></span>
-<span>  mmlcomp <span class="op">=</span> <span class="va">fit_mixed</span>,</span>
+<span>  mmlcomp <span class="op">=</span> <span class="va">mmlcomp_mixed</span>,</span>
 <span>  npv <span class="op">=</span> <span class="fl">10L</span>,</span>
 <span>  adaptive_range <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">2026</span></span>
 <span><span class="op">)</span></span>
+<span><span class="co"># |==============================================================================| 100%</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">pvs_mixed</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">pvs_mixed</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span>
+<span><span class="co"># id _farl1 _farl2 _farl3 _farl4 _farl5</span></span>
+<span><span class="co"># 1 -0.44981607 -1.1822068  -0.62434674 -0.7268575  -0.99316810 </span></span>
+<span><span class="co"># 2 0.94040775  0.7950428   1.02467040  1.0226945   -0.02442559 </span></span>
+<span><span class="co"># 3 -0.32120661 -0.2483761  -0.79345840 0.4757547   -0.15382940 </span></span>
+<span><span class="co"># 4 -0.19328627 0.1077317   -0.07456747 0.1797614   0.11467569  </span></span>
+<span><span class="co"># 5 -1.62911580 -0.7149930  -1.65130125 -0.9376058  -1.47626451 </span></span>
+<span><span class="co"># 6 0.09680734  0.5244688   0.20299657  0.8154040   0.32982803  </span></span></code></pre></div>
 <p>For mixed-format assessments, check that every <code>parTab</code>
 row contains the parameters required by its item type. Missing responses
 remain coded as <code>NA</code> and are ignored for the corresponding
 item during posterior calculation.</p>
 </div>
-<div class="section level2">
-<h2 id="practical-checks">Practical checks<a class="anchor" aria-label="anchor" href="#practical-checks"></a>
-</h2>
+<div class="section level3">
+<h3 id="unidimensional-practical-checks">Unidimensional practical checks<a class="anchor" aria-label="anchor" href="#unidimensional-practical-checks"></a>
+</h3>
 <p>Before reporting a FARL analysis, verify the following:</p>
 <ul>
 <li>rows of <code>X</code> and <code>Y</code> refer to the same
@@ -829,8 +1068,1070 @@ acceptable; and</li>
 are used in secondary analyses.</li>
 </ul>
 </div>
+</div>
 <div class="section level2">
-<h2 id="main-farl-outputs">Main FARL outputs<a class="anchor" aria-label="anchor" href="#main-farl-outputs"></a>
+<h2 id="multidimensional-farlr-and-dire-comparison">Multidimensional FARLR and DIRE comparison<a class="anchor" aria-label="anchor" href="#multidimensional-farlr-and-dire-comparison"></a>
+</h2>
+<p>Multidimensional large-scale assessments must model both
+high-dimensional, correlated background variables and dependence among
+latent traits. A PCA-only population model can discard low-variance
+covariate information that remains predictive of achievement, while
+fitting latent-trait covariances separately can yield an incoherent
+covariance estimate. MFARLR instead combines common factors with
+sparsely selected covariates and estimates the dimensions jointly.</p>
+<p>In practice, MFARLR uses the background variables to predict each
+latent dimension while retaining correlations among the dimensions. It
+combines common-factor scores with selected covariates, then estimates
+the regression coefficients and residual covariance jointly. The current
+multidimensional implementation supports binary 2PL items, so guessing
+parameters must be zero.</p>
+<p>This example reports not only the final plausible values, but also
+the selection matrix, regression coefficients, residual covariance,
+variational posterior moments, and convergence diagnostics produced
+during estimation.</p>
+<div class="section level3">
+<h3 id="input-data">Input data<a class="anchor" aria-label="anchor" href="#input-data"></a>
+</h3>
+<p>The multidimensional functions retain the same compact data
+interface. Both models receive <code>X</code>, <code>Y</code>, and
+<code>parTab</code>; item slopes, intercepts, and dimension assignments
+are obtained from <code>parTab</code> internally. In this simulation,
+<code>theta</code> is also available for evaluating recovery, but it is
+never supplied to the fitting function.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Object</th>
+<th align="left">Required shape</th>
+<th align="left">Role</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>X</code></td>
+<td align="left">Respondents by covariates</td>
+<td align="left">Background variables used to construct common-factor
+scores and factor-adjusted residual covariates. Values must be
+finite.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>Y</code></td>
+<td align="left">Respondents by items</td>
+<td align="left">Binary item responses coded 0/1. Missing responses may
+be coded <code>NA</code>; they are omitted during estimation.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>parTab</code></td>
+<td align="left">One row per item</td>
+<td align="left">Fixed item parameters and dimension assignments. It
+supplies the slopes, intercepts or difficulties, and the latent
+dimension measured by each item.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>main</code></td>
+<td align="left">Integer column indices</td>
+<td align="left">Primary covariates that are not penalized during
+dimension-specific FARLR screening.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>theta</code></td>
+<td align="left">Respondents by dimensions</td>
+<td align="left">True latent traits available only in the simulation;
+used below to calculate recovery statistics.</td>
+</tr>
+</tbody>
+</table>
+<p><code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code> still requires <code>parTab</code>; it
+cannot infer item parameters from <code>Y</code>. The construction
+follows the unidimensional example above, with one additional
+item-dimension column such as <code>dimension</code> or
+<code>subtest</code>. The current MFARLR implementation supports binary
+2PL items, so <code>c</code> or <code>guessing</code> must be zero. The
+example below uses the prepared <code>sim_m1$parTab</code> table.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   60</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   30</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000    5</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">parTab</span><span class="op">)</span></span>
+<span><span class="co">#item dimension b a d c ItemID test</span></span>
+<span><span class="co"># 1 1   1   0.9090085   1.0852796   -0.9865284  0   item1   mcomp   dimension1  </span></span>
+<span><span class="co"># 2 2   1   -1.4605271  0.9679681   1.4137436   0   item2   mcomp   dimension1  </span></span>
+<span><span class="co"># 3 3   1   0.7797827   0.8828721   -0.6884484  0   item3   mcomp   dimension1  </span></span>
+<span><span class="co"># 4 4   1   -0.2210281  1.1166641   0.2468141   0   item4   mcomp   dimension1  </span></span>
+<span><span class="co"># 5 5   1   -0.7199442  1.0148336   0.7306235   0   item5   mcomp   dimension1  </span></span>
+<span><span class="co"># 6 6   1   0.8171910   1.1513335   -0.9408594  0   item6   mcomp   dimension1  </span></span></code></pre></div>
+<p>The item-parameter parser accepts either a complete loading matrix
+for cross-loading items or a simple-structure representation with one
+slope and one dimension label per item. If <code>difficulty</code> or
+<code>b</code> is supplied instead of an intercept, FARL converts it
+internally. The stored <code>d</code> values are therefore on the
+logit-intercept scale, not the conventional item-difficulty scale.</p>
+</div>
+<div class="section level3">
+<h3 id="fit-mfarlr-gvem">Fit MFARLR-GVEM<a class="anchor" aria-label="anchor" href="#fit-mfarlr-gvem"></a>
+</h3>
+<p>MFARLR uses three steps. First, factor analysis summarizes the common
+variation in the standardized covariates. Second,
+<code>FARLR_Debias</code> screens covariates within each latent
+dimension and records a dimension-specific selection pattern. Third,
+these selected positions are held fixed while GVEM jointly updates the
+coefficient matrix, person-specific variational moments, and the full
+latent residual covariance. The Gaussian variational posterior makes
+these updates computationally feasible without multidimensional
+quadrature.</p>
+<div class="section level4">
+<h4 id="parameters-passed-directly-to-mfarlr_mml">Parameters passed directly to <code>MFARLR_mml()</code><a class="anchor" aria-label="anchor" href="#parameters-passed-directly-to-mfarlr_mml"></a>
+</h4>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Parameter</th>
+<th align="left">Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code>X</code>, <code>Y</code>,
+<code>parTab</code>
+</td>
+<td align="left">Data objects described above. The rows of
+<code>X</code> and <code>Y</code> must refer to the same respondents,
+and <code>parTab</code> must have one row per item.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>farlr_args</code></td>
+<td align="left">Named list forwarded to each dimension-specific call to
+<code>Farlr_mml(method = "FARLR_Debias")</code>. It controls the
+preliminary factor analysis, variable selection, and debiasing
+step.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>selection_tol</code></td>
+<td align="left">A preliminary coefficient is selected when its absolute
+value is greater than this tolerance. It determines the fixed
+zero/nonzero pattern used by the joint GVEM step.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>sigma_start</code></td>
+<td align="left">Optional positive-definite starting covariance matrix.
+The identity matrix is used when it is omitted.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>xi_start</code></td>
+<td align="left">Optional positive respondents-by-items matrix of
+starting values. A matrix of ones is used by default.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>max_iter</code></td>
+<td align="left">Maximum number of joint GVEM iterations after
+dimension-specific screening.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>threshold</code></td>
+<td align="left">Convergence tolerance for the largest absolute change
+across the coefficient matrix and residual covariance matrix.</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>progress</code>, <code>verbose</code>
+</td>
+<td align="left">Control the progress bar and printed diagnostic
+messages.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level4">
+<h4 id="parameters-inside-farlr_args">Parameters inside <code>farlr_args</code><a class="anchor" aria-label="anchor" href="#parameters-inside-farlr_args"></a>
+</h4>
+<p>These arguments affect only the preliminary unidimensional screening
+fits. The method is fixed internally to <code>"FARLR_Debias"</code> for
+every dimension.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Parameter</th>
+<th align="left">Meaning in the screening step</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>n_sam</code></td>
+<td align="left">Number of Monte Carlo latent-trait draws per respondent
+used during preliminary marginal-likelihood approximation. Larger values
+reduce Monte Carlo noise but increase computation.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>lambda</code></td>
+<td align="left">Candidate regularization values. The selected value
+controls the sparsity of each dimension-specific regression.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>main</code></td>
+<td align="left">Column indices of designated predictors in
+<code>X</code> that are treated as unpenalized primary variables in the
+factor-adjusted regression.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>delta.criteria</code></td>
+<td align="left">Convergence tolerance for the internal FARLR iterative
+updates.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>iter.max</code></td>
+<td align="left">Maximum iterations for each preliminary fit. This is
+distinct from the outer <code>max_iter</code> used by joint GVEM.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>window.size</code></td>
+<td align="left">Number of recent coefficient updates used by the
+stabilization or averaging step in preliminary estimation.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>seed</code></td>
+<td align="left">Random seed for the Monte Carlo draws, making screening
+reproducible.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>proposal_inflation</code></td>
+<td align="left">Inflation applied to the latent proposal distribution
+used for Monte Carlo integration.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>n_sam_final</code></td>
+<td align="left">Number of draws used in the final preliminary
+evaluation or debiased update.</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>progress</code>, <code>verbose</code>
+</td>
+<td align="left">Control output from each dimension-specific fit.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level4">
+<h4 id="construct-the-shared-farlr_args">Construct the shared <code>farlr_args</code><a class="anchor" aria-label="anchor" href="#construct-the-shared-farlr_args"></a>
+</h4>
+<p><code>farlr_args</code> is one shared named list, not one list per
+dimension. Internally, <code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code> fits each dimension
+separately with <code>Farlr_mml(method = "FARLR_Debias")</code> and
+passes this same list to every fit. Consequently, all dimensions use the
+same Monte Carlo settings, candidate <code>lambda</code> grid, primary
+covariates, convergence controls, and seed. Each dimension still has its
+own response items and produces its own selected <code>lambda</code>,
+coefficients, and fitted result.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">farlr_control</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  n_sam <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  main <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">main</span>,</span>
+<span>  delta.criteria <span class="op">=</span> <span class="fl">1e-2</span>,</span>
+<span>  iter.max <span class="op">=</span> <span class="fl">20L</span>,</span>
+<span>  window.size <span class="op">=</span> <span class="fl">200L</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
+<span>  K_hat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  proposal_inflation <span class="op">=</span> <span class="fl">0.2</span>,</span>
+<span>  n_sam_final <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  paran_iterations <span class="op">=</span> <span class="fl">500L</span>,</span>
+<span>  paran_centile <span class="op">=</span> <span class="fl">0</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Do not include <code>X</code>, <code>Y</code>, <code>parTab</code>,
+or <code>method</code> in this list. Those arguments are protected
+because <code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code> supplies the appropriate data and
+fixes the preliminary method to <code>"FARLR_Debias"</code>. Joint-model
+controls such as <code>selection_tol</code>, <code>sigma_start</code>,
+<code>xi_start</code>, <code>max_iter</code>, and <code>threshold</code>
+must be passed directly to <code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code>, outside
+<code>farlr_args</code>.</p>
+<p>The current interface does not accept a list of dimension-specific
+control lists. Supporting different <code>main</code>,
+<code>lambda</code>, or Monte Carlo settings for each dimension would
+require a separate interface or a modification to
+<code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code>.</p>
+<p>The small Monte Carlo settings below keep the example quick. A
+substantive analysis should assess stability with larger
+<code>n_sam</code>, <code>n_sam_final</code>, and a broader
+regularization grid.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_mfarlr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MFARLR_mml.html">MFARLR_mml</a></span><span class="op">(</span></span>
+<span>  X <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">X</span>,</span>
+<span>  Y <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">Y</span>,</span>
+<span>  parTab <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">parTab</span>,</span>
+<span>  farlr_args <span class="op">=</span> <span class="va">farlr_control</span>,</span>
+<span>  selection_tol <span class="op">=</span> <span class="fl">1e-8</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">500L</span>,</span>
+<span>  threshold <span class="op">=</span> <span class="fl">1e-3</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co"># Dimension 1: selected 16 of 64 coefficients.</span></span>
+<span><span class="co">#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co"># Dimension 2: selected 15 of 64 coefficients.</span></span>
+<span><span class="co">#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co"># Dimension 3: selected 16 of 64 coefficients.</span></span>
+<span><span class="co">#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co"># Dimension 4: selected 9 of 64 coefficients.</span></span>
+<span><span class="co">#   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </span></span>
+<span><span class="co"># Dimension 5: selected 16 of 64 coefficients.</span></span>
+<span><span class="co"># Running joint GVEM iterations</span></span>
+<span><span class="co">#   |=============================================================================================| 100%</span></span>
+<span><span class="co"># Converged at iteration 82.</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="examine-the-mfarlr-estimation-process">Examine the MFARLR estimation process<a class="anchor" aria-label="anchor" href="#examine-the-mfarlr-estimation-process"></a>
+</h3>
+<p>The fitted object stores the results of both the preliminary
+screening stage and the joint GVEM stage. The following components are
+the most useful for understanding the estimation process.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Component</th>
+<th align="left">Dimension</th>
+<th align="left">Interpretation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>dimension_fits</code></td>
+<td align="left">One fit per dimension</td>
+<td align="left">Complete unidimensional <code>FARLR_Debias</code> fits
+used to determine the active predictors for each latent dimension.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>Z</code></td>
+<td align="left">Respondents by predictors</td>
+<td align="left">Final factor-adjusted design matrix. Its columns
+contain estimated common-factor scores followed by the covariate terms
+used in the latent regression.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>index</code></td>
+<td align="left">Predictors by dimensions</td>
+<td align="left">Fixed selection matrix. A value of one means the
+predictor is estimated for that dimension; zero means its coefficient is
+fixed at zero.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>coefficients</code></td>
+<td align="left">Predictors by dimensions</td>
+<td align="left">Standardized final coefficient matrix. This is the
+matrix to use with the returned <code>sigma</code>.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>sigma</code></td>
+<td align="left">Dimensions by dimensions</td>
+<td align="left">Standardized residual covariance matrix.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>mu</code></td>
+<td align="left">Respondents by dimensions</td>
+<td align="left">Approximate posterior means from the final
+iteration.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>omega</code></td>
+<td align="left">One covariance matrix per respondent</td>
+<td align="left">Approximate posterior covariance matrices from the
+final iteration.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>xi</code></td>
+<td align="left">Respondents by items</td>
+<td align="left">Internal numerical values used by the estimation
+algorithm.</td>
+</tr>
+<tr class="odd">
+<td align="left">
+<code>a</code>, <code>d</code>
+</td>
+<td align="left">Item parameters</td>
+<td align="left">Item loading matrix and item intercepts used by the
+response model.</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>iterations</code>, <code>difference</code>,
+<code>convergence</code>
+</td>
+<td align="left">Scalars</td>
+<td align="left">Number of GVEM iterations, final maximum parameter
+change, and convergence label.</td>
+</tr>
+</tbody>
+</table>
+<p>The variational quantities <code>mu</code>, <code>omega</code>, and
+<code>xi</code> are obtained in the last E-step, whereas
+<code>coefficients</code> and <code>sigma</code> are obtained in its
+following M-step. At convergence the difference is negligible. If
+estimation stops at <code>max_iter</code> without convergence, these
+quantities should not be interpreted as a common fixed-point
+solution.</p>
+<div class="section level4">
+<h4 id="step-1-dimension-specific-screening">Step 1: dimension-specific screening<a class="anchor" aria-label="anchor" href="#step-1-dimension-specific-screening"></a>
+</h4>
+<p>The first stage fits one <code>FARLR_Debias</code> model per latent
+dimension. These fits share the same factor-adjusted design matrix, but
+their selected predictors may differ. The selection pattern is then held
+fixed during joint GVEM; GVEM updates coefficient values but does not
+add or remove predictors.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">dimension_fits</span><span class="op">)</span></span>
+<span><span class="co"># [1] 5</span></span>
+<span></span>
+<span><span class="va">screening_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  dimension <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">index</span><span class="op">)</span>,</span>
+<span>  selected_lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">dimension_fits</span>,</span>
+<span>    <span class="kw">function</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">lambda</span><span class="op">)</span><span class="op">[</span><span class="fl">1L</span><span class="op">]</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  selected_predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">index</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  available_predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">index</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">screening_summary</span> </span>
+<span><span class="co"># dimension selected_lambda selected_predictors available_predictors</span></span>
+<span><span class="co"># Dimension1    0.05    16  64  </span></span>
+<span><span class="co"># Dimension2    0.05    15  64  </span></span>
+<span><span class="co"># Dimension3    0.05    16  64  </span></span>
+<span><span class="co"># Dimension4    0.10    9   64  </span></span>
+<span><span class="co"># Dimension5    0.05    16  64  </span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">Z</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   64</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">Z</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># [1] "FS1" "FS2" "FS3" "FS4" "X1"  "X2"</span></span></code></pre></div>
+<p>The two-value <code>lambda</code> grid is used only to keep this
+example short. Because the selected values lie at its endpoints, a
+substantive analysis should use a broader grid and check whether the
+selected values move away from the bounds.</p>
+<p>The reported number of available predictors may exceed
+<code>ncol(X)</code> because <code>Z</code> also includes estimated
+common-factor scores. The <code>index</code> matrix therefore describes
+coefficients for <code>Z</code>, not directly for the original
+<code>X</code> matrix.</p>
+</div>
+<div class="section level4">
+<h4 id="step-2-joint-fitting">Step 2: joint fitting<a class="anchor" aria-label="anchor" href="#step-2-joint-fitting"></a>
+</h4>
+<p>After screening, MFARLR jointly refits the selected coefficients and
+the residual covariance among all latent dimensions. This preserves
+associations between dimensions instead of fitting each dimension
+independently. Missing item responses coded as <code>NA</code> are
+skipped automatically, so respondents do not need to have complete
+response records.</p>
+<p>The model alternates between updating respondent-level latent-trait
+summaries and updating the population regression until the largest
+parameter change is smaller than <code>threshold</code> or
+<code>max_iter</code> is reached. Parameters are placed on a
+standardized scale during fitting, which makes coefficients and residual
+variances comparable across dimensions.</p>
+</div>
+<div class="section level4">
+<h4 id="step-3-inspect-the-coefficient-matrix">Step 3: inspect the coefficient matrix<a class="anchor" aria-label="anchor" href="#step-3-inspect-the-coefficient-matrix"></a>
+</h4>
+<p>Rows of <code>coefficients</code> correspond to predictors in
+<code>Z</code>; columns correspond to latent dimensions. A positive
+coefficient means that, holding the other included predictors constant,
+a larger predictor value is associated with a larger population mean on
+that latent dimension. The magnitude is expressed in standardized
+latent-trait units per one unit of the corresponding <code>Z</code>
+predictor. Coefficients should not be interpreted causally.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">coef_matrix</span> <span class="op">&lt;-</span> <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">coefficients</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span></span>
+<span><span class="co"># [1] 64  5</span></span>
+<span></span>
+<span><span class="va">coef_matrix</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fl">10L</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="co">#      Dimension1  Dimension2  Dimension3   Dimension4  Dimension5</span></span>
+<span><span class="co"># FS1  0.03457389 -0.06183980  0.08506492  0.179464132  0.12974772</span></span>
+<span><span class="co"># FS2 -0.73476819 -0.66767066 -0.66023920 -0.708344339 -0.75737816</span></span>
+<span><span class="co"># FS3 -0.00605978 -0.06563699 -0.05505664 -0.009338055 -0.02664558</span></span>
+<span><span class="co"># FS4 -0.01610180  0.01798894  0.05776683  0.001734420  0.03523998</span></span>
+<span><span class="co"># X1   0.15946750  0.23391050  0.14785966  0.086780013  0.16017661</span></span>
+<span><span class="co"># X2   0.17632035  0.13800675  0.10362116  0.161433356  0.15244403</span></span>
+<span><span class="co"># X3   0.00000000  0.00000000  0.00000000  0.000000000  0.00000000</span></span>
+<span><span class="co"># X4   0.41113831  0.00000000  0.00000000  0.000000000  0.00000000</span></span>
+<span><span class="co"># X5   0.00000000  0.00000000  0.00000000  0.000000000  0.00000000</span></span>
+<span><span class="co"># X6   0.00000000  0.00000000  0.00000000  0.000000000  0.00000000</span></span>
+<span></span>
+<span><span class="va">selected_positions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span></span>
+<span>  <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">index</span> <span class="op">!=</span> <span class="fl">0</span>,</span>
+<span>  arr.ind <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">predictor_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">predictor_names</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">predictor_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Predictor"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">dimension_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dimension_names</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">dimension_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Dimension"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">coef_matrix</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">selected_coefficients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  predictor <span class="op">=</span> <span class="va">predictor_names</span><span class="op">[</span><span class="va">selected_positions</span><span class="op">[</span>, <span class="st">"row"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  dimension <span class="op">=</span> <span class="va">dimension_names</span><span class="op">[</span><span class="va">selected_positions</span><span class="op">[</span>, <span class="st">"col"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  coefficient <span class="op">=</span> <span class="va">coef_matrix</span><span class="op">[</span><span class="va">selected_positions</span><span class="op">]</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">selected_coefficients</span> <span class="op">&lt;-</span> <span class="va">selected_coefficients</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">selected_coefficients</span><span class="op">$</span><span class="va">coefficient</span><span class="op">)</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">selected_coefficients</span>, <span class="fl">5L</span><span class="op">)</span></span>
+<span><span class="co"># predictor dimension coefficient</span></span>
+<span><span class="co"># 45    X50 Dimension3  1.0545955   </span></span>
+<span><span class="co"># 39    X23 Dimension3  0.9223081   </span></span>
+<span><span class="co"># 58    FS2 Dimension5  -0.7573782  </span></span>
+<span><span class="co"># 2 FS2 Dimension1  -0.7347682  </span></span>
+<span><span class="co"># 49    FS2 Dimension4  -0.7083443  </span></span></code></pre></div>
+<p>The zero entries have two possible interpretations. A zero paired
+with <code>index = 0</code> is structurally fixed because that predictor
+was not selected. A very small value paired with <code>index = 1</code>
+is an estimated coefficient that became small during joint refitting.
+The <code>index</code> matrix should therefore be consulted whenever
+zeros are summarized.</p>
+</div>
+<div class="section level4">
+<h4 id="step-4-interpret-sigma">Step 4: interpret <code>sigma</code><a class="anchor" aria-label="anchor" href="#step-4-interpret-sigma"></a>
+</h4>
+<p><code>sigma</code> is a residual covariance matrix, not the marginal
+covariance of the latent traits. Its diagonal entries are residual
+variances remaining after conditioning on <code>Z</code>. Its
+off-diagonal entries measure remaining dependence between pairs of
+latent dimensions after the selected background predictors have been
+taken into account.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">sigma</span>,<span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#            Dimension1 Dimension2 Dimension3 Dimension4 Dimension5</span></span>
+<span><span class="co"># Dimension1      0.221      0.156      0.157      0.233      0.177</span></span>
+<span><span class="co"># Dimension2      0.156      0.296      0.151      0.215      0.174</span></span>
+<span><span class="co"># Dimension3      0.157      0.151      0.223      0.208      0.171</span></span>
+<span><span class="co"># Dimension4      0.233      0.215      0.208      0.443      0.233</span></span>
+<span><span class="co"># Dimension5      0.177      0.174      0.171      0.233      0.242</span></span>
+<span></span>
+<span><span class="va">residual_correlation</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov2cor</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">residual_correlation</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#            Dimension1 Dimension2 Dimension3 Dimension4 Dimension5</span></span>
+<span><span class="co"># Dimension1      1.000      0.609      0.704      0.744      0.764</span></span>
+<span><span class="co"># Dimension2      0.609      1.000      0.586      0.594      0.649</span></span>
+<span><span class="co"># Dimension3      0.704      0.586      1.000      0.661      0.735</span></span>
+<span><span class="co"># Dimension4      0.744      0.594      0.661      1.000      0.712</span></span>
+<span><span class="co"># Dimension5      0.764      0.649      0.735      0.712      1.000</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-5-inspect-variational-posterior-quantities">Step 5: inspect variational posterior quantities<a class="anchor" aria-label="anchor" href="#step-5-inspect-variational-posterior-quantities"></a>
+</h4>
+<p>The variational posterior quantities are useful for diagnostics and
+for understanding how much information the response pattern provides for
+each respondent. They are intermediate approximations, not the final
+plausible values.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">mu</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000    5</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">mu</span>,<span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#        [,1]   [,2]   [,3]   [,4]   [,5]</span></span>
+<span><span class="co"># [1,]  1.730  1.233  1.448  1.483  1.825</span></span>
+<span><span class="co"># [2,] -1.154 -0.349 -0.921 -0.796 -0.630</span></span>
+<span><span class="co"># [3,]  0.584  0.661  0.278  0.270  0.609</span></span>
+<span><span class="co"># [4,]  0.274  0.447  0.555  0.591  0.833</span></span>
+<span><span class="co"># [5,] -1.215 -0.075  0.005 -0.064 -1.222</span></span>
+<span><span class="co"># [6,] -0.946 -0.796 -1.031 -0.965 -0.695</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">omega</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000    5    5</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">omega</span><span class="op">[</span><span class="fl">1</span>, , <span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#       [,1]  [,2]  [,3]  [,4]  [,5]</span></span>
+<span><span class="co"># [1,] 0.123 0.062 0.067 0.099 0.075</span></span>
+<span><span class="co"># [2,] 0.062 0.185 0.061 0.083 0.072</span></span>
+<span><span class="co"># [3,] 0.067 0.061 0.133 0.083 0.074</span></span>
+<span><span class="co"># [4,] 0.099 0.083 0.083 0.241 0.092</span></span>
+<span><span class="co"># [5,] 0.075 0.072 0.074 0.092 0.129</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">xi</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   30</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">xi</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
+<span><span class="co"># 0.2338  0.6322  1.0733  1.2262  1.6648  6.7136 </span></span></code></pre></div>
+<p>For each respondent, <code>mu</code> contains the approximate
+latent-trait means and <code>omega</code> contains the corresponding
+uncertainty. Smaller diagonal entries of <code>omega</code> indicate
+more precise estimates. <code>xi</code> is an internal numerical
+quantity and normally does not need to be interpreted in an applied
+analysis.</p>
+</div>
+<div class="section level4">
+<h4 id="step-6-convergence-and-numerical-checks">Step 6: convergence and numerical checks<a class="anchor" aria-label="anchor" href="#step-6-convergence-and-numerical-checks"></a>
+</h4>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  convergence <span class="op">=</span> <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">convergence</span>,</span>
+<span>  iterations <span class="op">=</span> <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">iterations</span>,</span>
+<span>  final_maximum_change <span class="op">=</span> <span class="va">mmlcomp_mfarlr</span><span class="op">$</span><span class="va">difference</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># $convergence</span></span>
+<span><span class="co"># [1] "Converged"</span></span>
+<span><span class="co"># </span></span>
+<span><span class="co"># $iterations</span></span>
+<span><span class="co"># [1] 82</span></span>
+<span><span class="co"># </span></span>
+<span><span class="co"># $final_maximum_change</span></span>
+<span><span class="co"># [1] 0.0009755324</span></span></code></pre></div>
+<p><code>convergence = "Converged"</code> means that the maximum
+absolute change fell below <code>threshold</code>; it does not by itself
+guarantee a unique optimum.</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="draw-mfarlr-plausible-values">Draw MFARLR plausible values<a class="anchor" aria-label="anchor" href="#draw-mfarlr-plausible-values"></a>
+</h3>
+<p><code><a href="../reference/MFARLR_drawPVs.html">MFARLR_drawPVs()</a></code> combines the fitted multivariate
+latent-regression prior with each respondent’s item-response likelihood.
+Monte Carlo draws from the prior are likelihood-weighted to approximate
+the posterior mean and covariance, from which correlated plausible
+values are generated. These draws are intended for population and
+subgroup inference rather than individual scoring. The fitted object
+retains <code>Y</code>, the loading matrix, and the item intercepts, so
+they do not need to be supplied again.</p>
+<p>For each respondent, the fitted population model supplies candidate
+latent scores. The observed item responses determine how strongly those
+candidates are weighted. Plausible values are then sampled jointly
+across dimensions so that their dependence is retained.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Parameter</th>
+<th align="left">Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>object</code></td>
+<td align="left">Fitted object returned by <code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code>. It
+supplies the population-model parameters, responses, and item
+parameters.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>npv</code></td>
+<td align="left">Number of plausible-value vectors generated for each
+respondent. Each vector contains one value per latent dimension.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>n_mc</code></td>
+<td align="left">Number of Monte Carlo proposal draws used to
+approximate each posterior distribution. Larger values generally reduce
+importance-sampling noise.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>theta</code></td>
+<td align="left">Optional respondents-by-dimensions matrix of true
+traits used only for simulation diagnostics such as
+<code>mean_difference</code>. It should be omitted for real data.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>seed</code></td>
+<td align="left">Random seed controlling posterior simulation and
+plausible-value generation.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>progress</code></td>
+<td align="left">Whether to print posterior-sampling progress.</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mfarlr_PVs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MFARLR_drawPVs.html">MFARLR_drawPVs</a></span><span class="op">(</span></span>
+<span>  object <span class="op">=</span> <span class="va">mmlcomp_mfarlr</span>,</span>
+<span>  npv <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  n_mc <span class="op">=</span> <span class="fl">20000L</span>,</span>
+<span>  theta <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">theta</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># |===========================================================================| 100%</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">mfarlr_PVs</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span>
+<span><span class="co"># id _mfarlr_D1_PV1 _mfarlr_D1_PV2 _mfarlr_D1_PV3 _mfarlr_D1_PV4</span></span>
+<span><span class="co"># 1 1   1.7070957   0.9297121   1.8003083   1.6740894   </span></span>
+<span><span class="co"># 2 2   -1.3403714  -1.0500481  -1.3897510  -1.5099729  </span></span>
+<span><span class="co"># 3 3   0.8510190   0.6816110   0.8673305   1.3513708   </span></span>
+<span><span class="co"># 4 4   0.4784608   0.6712627   0.5077381   0.3493782   </span></span>
+<span><span class="co"># 5 5   -1.2208628  -0.9639171  -0.9389281  -0.7005827  </span></span>
+<span><span class="co"># 6 6   -0.6719677  -0.4191851  -0.9734333  -0.4374931  </span></span>
+<span></span>
+<span><span class="va">mfarlr_PVs</span><span class="op">$</span><span class="va">mean_difference</span></span>
+<span><span class="co"># EAP minus theta mean differences: 0.003, 0.004, 0.003, 0.004, 0.004</span></span>
+<span><span class="co"># Median importance-sampling ESS: 9620.5 of 20000.</span></span>
+<span><span class="co"># Dimension1  Dimension2  Dimension3  Dimension4  Dimension5 </span></span>
+<span><span class="co"># 0.002031074 0.002331433 0.001994496 0.002648474 0.002528947 </span></span></code></pre></div>
+<p>Plausible values should not be averaged first and then analyzed as
+error-free scores. A downstream statistic should be calculated
+separately for every plausible-value data set and combined using the
+appropriate multiple-imputation rules. The first plausible value is used
+below only to provide a compact visual simulation comparison.</p>
+</div>
+<div class="section level3">
+<h3 id="fit-multidimensional-dire">Fit multidimensional DIRE<a class="anchor" aria-label="anchor" href="#fit-multidimensional-dire"></a>
+</h3>
+<p>Multidimensional DIRE provides the PCA-based comparison model. It
+uses the same responses and item parameters, allowing the resulting
+plausible values to be compared with MFARLR under a common data
+setup.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Parameter</th>
+<th align="left">Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code>X</code>, <code>Y</code>,
+<code>parTab</code>
+</td>
+<td align="left">The same covariates, responses, and fixed item
+parameters used by MFARLR.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>main</code></td>
+<td align="left">Designated main-variable indices supplied to the DIRE
+population model.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>pca_type = "cov"</code></td>
+<td align="left">Performs PCA using the covariance matrix rather than
+the correlation matrix.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>use_residual = TRUE</code></td>
+<td align="left">Includes residual covariate information in addition to
+retained principal components.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>var_threshold = 0.90</code></td>
+<td align="left">Retains enough principal components to explain at least
+90% of the selected PCA variance.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>calcCor = TRUE</code></td>
+<td align="left">Estimates posterior relationships among latent
+dimensions instead of treating the constructs as independent.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>npv</code></td>
+<td align="left">Number of plausible values per respondent and
+construct.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>group_vars</code></td>
+<td align="left">Variables used by the DIRE conditioning or grouping
+model.</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmlcomp_dire</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MDIRE_mml.html">MDIRE_mml</a></span><span class="op">(</span></span>
+<span>  X <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">X</span>,</span>
+<span>  Y <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">Y</span>,</span>
+<span>  parTab <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">parTab</span>,</span>
+<span>  main <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">main</span>,</span>
+<span>  pca_type <span class="op">=</span> <span class="st">"cov"</span>,</span>
+<span>  use_residual <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  var_threshold <span class="op">=</span> <span class="fl">0.90</span>,</span>
+<span>  calcCor <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dire_PVs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MDIRE_drawPVs.html">MDIRE_drawPVs</a></span><span class="op">(</span></span>
+<span>  object <span class="op">=</span> <span class="va">mmlcomp_dire</span>,</span>
+<span>  npv <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  group_vars <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">main</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># Calculating posterior distribution for construct A (1 of 5)</span></span>
+<span><span class="co"># Calculating posterior distribution for construct B (2 of 5)</span></span>
+<span><span class="co"># Calculating posterior distribution for construct C (3 of 5)</span></span>
+<span><span class="co"># Calculating posterior distribution for construct D (4 of 5)</span></span>
+<span><span class="co"># Calculating posterior distribution for construct E (5 of 5)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct A and B (1 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct A and C (2 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct A and D (3 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct A and E (4 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct B and C (5 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct B and D (6 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct B and E (7 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct C and D (8 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct C and E (9 of 10)</span></span>
+<span><span class="co"># Calculating posterior correlation between construct D and E (10 of 10)</span></span>
+<span><span class="co"># Generating plausible values.</span></span></code></pre></div>
+<p>The DIRE fitting object and PV object can be inspected before
+comparison. This is useful for confirming construct names and
+output-column conventions, which differ from the MFARLR naming
+scheme.</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">dire_PVs</span><span class="op">)</span></span>
+<span><span class="co">#  [1] "data"          "rawPV"         "dimension_pvs" "pv"            "combinations" </span></span>
+<span><span class="co">#  [6] "group_summary" "mean"          "var"           "mean_v"        "sample_size"  </span></span>
+<span><span class="co"># [11] "mmlcomp"       "pv_result"     "call"     </span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">dire_PVs</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span>
+<span><span class="co"># [1] 3000   61</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dire_PVs</span><span class="op">$</span><span class="va">data</span><span class="op">)</span> <span class="co"># ABCDE means dimension</span></span>
+<span><span class="co"># id A_dire1 B_dire1 C_dire1 D_dire1 E_dire1</span></span>
+<span><span class="co"># 1 1   1.0098866   0.6283412   1.0119246   0.3268513   1.07051656  </span></span>
+<span><span class="co"># 11    10  -1.2614441  0.7298142   -0.9754807  -0.3421709  0.06232698  </span></span>
+<span><span class="co"># 21    100 0.7722405   1.2705218   -0.1507722  0.4312352   0.16345660  </span></span>
+<span><span class="co"># 31    1000    -0.2377952  -0.4522581  0.2853661   -0.3157454  0.70393454  </span></span>
+<span><span class="co"># 41    1001    -0.8912705  0.1688350   -1.3133909  -0.4277387  -1.23679791 </span></span>
+<span><span class="co"># 51    1002    -0.5205183  -0.2847433  0.2672458   -0.8103878  0.08794788  </span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="compare-multidimensional-plausible-values">Compare multidimensional plausible values<a class="anchor" aria-label="anchor" href="#compare-multidimensional-plausible-values"></a>
+</h3>
+<p>The two PV outputs are first restored to the original
+<code>sim_m1</code> subject order. PV1 is then extracted separately for
+every latent dimension. Correlation and RMSE provide a compact
+simulation check of latent-distribution recovery; in an applied
+analysis, inference should combine estimates across all plausible values
+rather than treating a single draw as an observed score.</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sim_m1</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span></span>
+<span><span class="va">subject_order</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">order_PVs</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">dat</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">row_order</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">subject_order</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">anyNA</a></span><span class="op">(</span><span class="va">row_order</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Some subjects are missing from the PV output."</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">dat</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">[</span><span class="va">row_order</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">dat</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span>  <span class="va">dat</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">mfarlr_dat</span> <span class="op">&lt;-</span> <span class="fu">order_PVs</span><span class="op">(</span><span class="va">mfarlr_PVs</span><span class="op">$</span><span class="va">datPVs</span><span class="op">)</span></span>
+<span><span class="va">dire_dat</span> <span class="op">&lt;-</span> <span class="fu">order_PVs</span><span class="op">(</span><span class="va">dire_PVs</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mfarlr_first_PV</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">dimension</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">mfarlr_dat</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"_mfarlr_D"</span>, <span class="va">dimension</span>, <span class="st">"_PV1"</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dire_first_PV</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">dimension</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">subtest</span> <span class="op">&lt;-</span> <span class="va">mmlcomp_dire</span><span class="op">$</span><span class="va">subtest_names</span><span class="op">[</span><span class="va">dimension</span><span class="op">]</span></span>
+<span>    <span class="va">dire_dat</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">subtest</span>, <span class="st">"_dire1"</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dimension_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Dimension"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">mfarlr_first_PV</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">dimension_names</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">dire_first_PV</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">dimension_names</span></span>
+<span></span>
+<span><span class="va">multidimensional_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>  <span class="va">rbind</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">dimension</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">truth</span> <span class="op">&lt;-</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">theta</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>    <span class="va">mfarlr_error</span> <span class="op">&lt;-</span> <span class="va">mfarlr_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span> <span class="op">-</span> <span class="va">truth</span></span>
+<span>    <span class="va">dire_error</span> <span class="op">&lt;-</span> <span class="va">dire_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span> <span class="op">-</span> <span class="va">truth</span></span>
+<span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>      dimension <span class="op">=</span> <span class="va">dimension</span>,</span>
+<span>      MFARLR_correlation <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span></span>
+<span>        <span class="va">truth</span>,</span>
+<span>        <span class="va">mfarlr_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>      <span class="op">)</span>,</span>
+<span>      DIRE_correlation <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span></span>
+<span>        <span class="va">truth</span>,</span>
+<span>        <span class="va">dire_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>      <span class="op">)</span>,</span>
+<span>      MFARLR_RMSE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">mfarlr_error</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      DIRE_RMSE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">dire_error</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">multidimensional_comparison</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co"># dimension MFARLR_correlation DIRE_correlation MFARLR_RMSE DIRE_RMSE</span></span>
+<span><span class="co"># 1 0.858   0.772   0.535   0.676</span></span>
+<span><span class="co"># 2 0.798   0.724   0.635   0.724</span></span>
+<span><span class="co"># 3 0.843   0.740   0.563   0.746</span></span>
+<span><span class="co"># 4 0.743   0.673   0.725   0.818</span></span>
+<span><span class="co"># 5 0.862   0.775   0.529   0.681</span></span></code></pre></div>
+<p>Correlation measures preservation of respondent ordering and is
+insensitive to a linear change of scale. RMSE measures absolute recovery
+on the simulation’s latent-trait scale and is therefore sensitive to
+both bias and dispersion. Reporting both prevents a method with high
+rank-order recovery but poor scale recovery from appearing uniformly
+successful. Because this table uses only PV1, it is a descriptive
+simulation check; formal downstream inference should be repeated across
+all <code>npv</code> draws.</p>
+<p>The following figure overlays the two sets of PVs in every dimension.
+Solid lines are method-specific regressions and the dashed line is the
+identity line. A shared legend is placed in the final panel to avoid
+covering the data.</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">plot_MFARLR_MDIRE</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span></span>
+<span>    <span class="va">theta</span>,</span>
+<span>    <span class="va">mfarlr_first_PV</span>,</span>
+<span>    <span class="va">dire_first_PV</span>,</span>
+<span>    <span class="va">file</span> <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
+<span>  <span class="va">mfarlr_first_PV</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">mfarlr_first_PV</span><span class="op">)</span></span>
+<span>  <span class="va">dire_first_PV</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">dire_first_PV</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">mfarlr_first_PV</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">dire_first_PV</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
+<span>  <span class="va">total_panels</span> <span class="op">&lt;-</span> <span class="va">D</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>  <span class="va">panel_columns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">ceiling</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">total_panels</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">panel_rows</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">ceiling</a></span><span class="op">(</span><span class="va">total_panels</span> <span class="op">/</span> <span class="va">panel_columns</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">save_plot</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">save_plot</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/png.html" class="external-link">png</a></span><span class="op">(</span></span>
+<span>      filename <span class="op">=</span> <span class="va">file</span>,</span>
+<span>      width <span class="op">=</span> <span class="fl">3000</span>,</span>
+<span>      height <span class="op">=</span> <span class="fl">2100</span>,</span>
+<span>      res <span class="op">=</span> <span class="fl">300</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">old_par</span> <span class="op">&lt;-</span> <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>no.readonly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">old_par</span><span class="op">)</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">save_plot</span> <span class="op">&amp;&amp;</span> <span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.cur</a></span><span class="op">(</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1L</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span></span>
+<span>    mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">panel_rows</span>, <span class="va">panel_columns</span><span class="op">)</span>,</span>
+<span>    mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4.5</span>, <span class="fl">4.5</span>, <span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>    oma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">5</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">dimension</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">truth</span> <span class="op">&lt;-</span> <span class="va">theta</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>    <span class="va">mfarlr_pv</span> <span class="op">&lt;-</span> <span class="va">mfarlr_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>    <span class="va">dire_pv</span> <span class="op">&lt;-</span> <span class="va">dire_first_PV</span><span class="op">[</span>, <span class="va">dimension</span><span class="op">]</span></span>
+<span>    <span class="va">plot_range</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">truth</span>, <span class="va">mfarlr_pv</span>, <span class="va">dire_pv</span>, finite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span></span>
+<span>      <span class="cn">NA_real_</span>, <span class="cn">NA_real_</span>,</span>
+<span>      xlim <span class="op">=</span> <span class="va">plot_range</span>,</span>
+<span>      ylim <span class="op">=</span> <span class="va">plot_range</span>,</span>
+<span>      xlab <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"True theta, dimension "</span>, <span class="va">dimension</span><span class="op">)</span>,</span>
+<span>      ylab <span class="op">=</span> <span class="st">"First plausible value"</span>,</span>
+<span>      main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Dimension "</span>, <span class="va">dimension</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/grid.html" class="external-link">grid</a></span><span class="op">(</span>col <span class="op">=</span> <span class="st">"gray90"</span><span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span></span>
+<span>      <span class="va">truth</span>, <span class="va">dire_pv</span>,</span>
+<span>      pch <span class="op">=</span> <span class="fl">16</span>, cex <span class="op">=</span> <span class="fl">0.45</span>,</span>
+<span>      col <span class="op">=</span> <span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/adjustcolor.html" class="external-link">adjustcolor</a></span><span class="op">(</span><span class="st">"steelblue"</span>, alpha.f <span class="op">=</span> <span class="fl">0.30</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span></span>
+<span>      <span class="va">truth</span>, <span class="va">mfarlr_pv</span>,</span>
+<span>      pch <span class="op">=</span> <span class="fl">16</span>, cex <span class="op">=</span> <span class="fl">0.45</span>,</span>
+<span>      col <span class="op">=</span> <span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/adjustcolor.html" class="external-link">adjustcolor</a></span><span class="op">(</span><span class="st">"darkorange"</span>, alpha.f <span class="op">=</span> <span class="fl">0.30</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span></span>
+<span>      <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">dire_pv</span> <span class="op">~</span> <span class="va">truth</span><span class="op">)</span>,</span>
+<span>      col <span class="op">=</span> <span class="st">"steelblue"</span>, lwd <span class="op">=</span> <span class="fl">3</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span></span>
+<span>      <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">mfarlr_pv</span> <span class="op">~</span> <span class="va">truth</span><span class="op">)</span>,</span>
+<span>      col <span class="op">=</span> <span class="st">"darkorange"</span>, lwd <span class="op">=</span> <span class="fl">3</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, col <span class="op">=</span> <span class="st">"gray35"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, lty <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/frame.html" class="external-link">plot.new</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span></span>
+<span>    <span class="st">"center"</span>,</span>
+<span>    title <span class="op">=</span> <span class="st">"Method"</span>,</span>
+<span>    legend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DIRE regression"</span>, <span class="st">"MFARLR regression"</span>, <span class="st">"Identity"</span><span class="op">)</span>,</span>
+<span>    col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"steelblue"</span>, <span class="st">"darkorange"</span>, <span class="st">"gray35"</span><span class="op">)</span>,</span>
+<span>    lty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    lwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    bty <span class="op">=</span> <span class="st">"n"</span>,</span>
+<span>    cex <span class="op">=</span> <span class="fl">1.05</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">unused_panels</span> <span class="op">&lt;-</span> <span class="va">panel_rows</span> <span class="op">*</span> <span class="va">panel_columns</span> <span class="op">-</span> <span class="va">total_panels</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">unused_panels</span> <span class="op">&gt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">panel</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">unused_panels</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/frame.html" class="external-link">plot.new</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/mtext.html" class="external-link">mtext</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Comparison of MFARLR and DIRE Plausible Values"</span>,</span>
+<span>    side <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>    outer <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    line <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>    cex <span class="op">=</span> <span class="fl">1.5</span>,</span>
+<span>    font <span class="op">=</span> <span class="fl">2</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="st">"figures"</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">plot_MFARLR_MDIRE</span><span class="op">(</span></span>
+<span>  theta <span class="op">=</span> <span class="va">sim_m1</span><span class="op">$</span><span class="va">theta</span>,</span>
+<span>  mfarlr_first_PV <span class="op">=</span> <span class="va">mfarlr_first_PV</span>,</span>
+<span>  dire_first_PV <span class="op">=</span> <span class="va">dire_first_PV</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"figures/multidimensional_PV_comparison.png"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><img src="figures/multidimensional_PV_comparison.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="main-outputs">Main Outputs<a class="anchor" aria-label="anchor" href="#main-outputs"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -844,18 +2145,72 @@ are used in secondary analyses.</li>
 <tbody>
 <tr class="odd">
 <td align="left"><code><a href="../reference/Farlr_mml.html">Farlr_mml()</a></code></td>
-<td align="left">Coefficients, residual SD, selected regularization
-value, factor scores, factor-adjusted designs, item information, and
-fitting diagnostics.</td>
+<td align="left">Coefficients, residual SD, selected tuning parameter,
+factor scores, and method-specific designs</td>
 </tr>
 <tr class="even">
 <td align="left"><code><a href="../reference/Farlr_drawPVs.html">Farlr_drawPVs()</a></code></td>
-<td align="left">Plausible-value matrix, ID-based PV data frame, EAP
-estimates, posterior variances, posterior modes, and fitted prior
-means.</td>
+<td align="left">PV data, EAP estimates, posterior variances, modes, and
+prior means</td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/Dire_mml.html">Dire_mml()</a></code></td>
+<td align="left">DIRE <code>mmlMeans</code> object, coefficients, and
+PCA object</td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/Dire_drawPVs.html">Dire_drawPVs()</a></code></td>
+<td align="left">Respondent IDs and unidimensional plausible values</td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code></td>
+<td align="left">Coefficient matrix, residual covariance, selection
+matrix, variational moments, and retained inputs</td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/MFARLR_drawPVs.html">MFARLR_drawPVs()</a></code></td>
+<td align="left">Multidimensional PV array, wide PV data, EAP means and
+covariances, and effective sample sizes</td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/MDIRE_mml.html">MDIRE_mml()</a></code></td>
+<td align="left">Multidimensional DIRE fit, PCA object, item
+assignments, and retained inputs</td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/MDIRE_drawPVs.html">MDIRE_drawPVs()</a></code></td>
+<td align="left">Dimension-specific PVs and optional subgroup
+summaries</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level2">
+<h2 id="notes">Notes<a class="anchor" aria-label="anchor" href="#notes"></a>
+</h2>
+<ul>
+<li>Rows of <code>X</code> and <code>Y</code> must correspond to the
+same respondents.</li>
+<li>Rows of <code>parTab</code> must follow the item-column order in
+<code>Y</code>.</li>
+<li>
+<code>main</code> uses column indices or names from <code>X</code>,
+depending on the function.</li>
+<li>Set <code>seed</code> for reproducible estimation and PV
+generation.</li>
+<li>
+<code><a href="../reference/MFARLR_mml.html">MFARLR_mml()</a></code> currently supports multidimensional binary
+2PL items.</li>
+<li>
+<code><a href="../reference/MDIRE_mml.html">MDIRE_mml()</a></code> requires every item to load on exactly one
+dimension.</li>
+<li>A larger <code>n_mc</code> improves the Monte Carlo approximation in
+<code><a href="../reference/MFARLR_drawPVs.html">MFARLR_drawPVs()</a></code> but increases computation time.</li>
+<li>Most code chunks are not evaluated during routine package builds
+because the setup chunk sets <code>eval = FALSE</code>. The
+figure-inclusion chunk is evaluated separately and displays the
+pre-generated comparison figure when available.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
